@@ -39,6 +39,13 @@ export async function migrate(): Promise<void> {
     )
   `);
 
+  // This table is created here rather than by a migration — it is the thing
+  // that tracks migrations — so it cannot be covered by 002_rls.sql and has to
+  // be protected in place. It matters on Supabase, where PostgREST publishes
+  // every unprotected `public` table: leaking the migration history is not a
+  // data breach, but it is a free map of the schema for anyone probing it.
+  await pool.query('ALTER TABLE schema_migrations ENABLE ROW LEVEL SECURITY');
+
   const files = (await readdir(MIGRATIONS_DIR))
     .filter((name) => name.endsWith('.sql'))
     .sort();

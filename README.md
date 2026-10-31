@@ -83,6 +83,45 @@ TLS is auto-detected from the host — off for `localhost`, on for anything else
 so the same codebase runs against both with only this variable changing.
 `.env` is gitignored; `.env.example` documents every variable.
 
+Then point the app at it and check what landed:
+
+```bash
+cd server
+npm run migrate      # create the schema
+npm run ingest       # populate it
+npm run db:status    # report exactly what is in there
+```
+
+### Row Level Security on Supabase
+
+Supabase runs **PostgREST over the `public` schema** and publishes it on the
+project's public URL. Any table created there without RLS enabled is readable
+with the project's anon key — which is a public value, shipped in browser
+bundles. Creating these tables and walking away would publish the whole dataset.
+
+So `002_rls.sql` enables RLS on every table and revokes the `anon` /
+`authenticated` grants. With **no policies defined, every row is denied** to
+those roles. The API is unaffected: it connects as the database owner over a
+direct Postgres connection, and a table's owner is not subject to RLS.
+
+Deny by default, add policies deliberately if a use case appears. On a local
+cluster the migration is a harmless no-op.
+
+`npm run db:status` reports RLS state per table and flags anything unprotected
+when the target is Supabase.
+
+### Resetting
+
+```bash
+npm run db:status          # what is in there now
+npm run db:reset           # dry run — prints what it would drop, changes nothing
+npm run db:reset -- --yes  # actually drop this app's tables and re-migrate
+```
+
+`db:reset` drops only the six tables this application creates, **by name**. It
+never issues `DROP SCHEMA public CASCADE` — on Supabase that would destroy
+auth, storage and realtime along with it.
+
 ### Scripts
 
 | Location | Command | Does |
@@ -90,6 +129,8 @@ so the same codebase runs against both with only this variable changing.
 | `server/` | `npm run dev` | API with hot reload |
 | | `npm run migrate` | Apply migrations only |
 | | `npm run ingest` | Migrate, then run the pipeline once |
+| | `npm run db:status` | Report tables, row counts, RLS, migration and ingest history |
+| | `npm run db:reset` | Dry run; `-- --yes` to drop this app's tables and re-migrate |
 | | `npm run build` / `start` | Compile to `dist/`, run compiled |
 | | `npm run typecheck` | `tsc --noEmit` |
 | `web/` | `npm run dev` | Vite dev server, proxies `/api` → `:4000` |
@@ -218,6 +259,9 @@ job; `npm run ingest` exists for exactly that.
 | `cities`, `species` | Reference data, mirrored from code so aggregates can `GROUP BY` region in SQL. |
 | `dataset_meta` | One row: severity breakpoints, density normaliser, date bounds. |
 | `ingest_runs` | Audit row per run — the answer to "how did you handle duplicates and incomplete data". |
+
+All six tables (including `schema_migrations`) have RLS enabled — see
+[Row Level Security on Supabase](#row-level-security-on-supabase).
 
 `observed_at` is `TIMESTAMP` (not `TIMESTAMPTZ`) on purpose: upstream sends no
 timezone designator, and letting the driver reinterpret it would shift every
