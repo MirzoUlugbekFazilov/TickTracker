@@ -1,34 +1,18 @@
 {
   "name": "ticktrack-uk",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "typecheck": "tsc -b --noEmit",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "leaflet": "^1.9.4",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "react-leaflet": "^5.0.0",
-    "react-router-dom": "^7.18.5",
-    "recharts": "^3.10.1"
-  },
-  "devDependencies": {
-    "@types/leaflet": "^1.9.22",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.89.0",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.5"
-  },
-  "description": "TickTrack UK — interactive map and reporting tool for UK tick sightings. Elanco placement programme technical task.",
+  "description": "TickTrack UK — full-stack tick sighting tracker. Elanco placement programme technical task.",
   "author": "Mirzo-Ulugbek Fazilov",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix web install",
+    "dev:api": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "migrate": "npm --prefix server run migrate",
+    "ingest": "npm --prefix server run ingest",
+    "build": "npm --prefix server run build && npm --prefix web run build",
+    "typecheck": "npm --prefix server run typecheck && npm --prefix web run typecheck",
+    "lint": "npm --prefix web run lint"
+  }
 }

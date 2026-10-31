@@ -29,3 +29,6 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Server build output
+server/dist
