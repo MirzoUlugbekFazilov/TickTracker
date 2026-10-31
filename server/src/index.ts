@@ -20,6 +20,34 @@ import { checkConnection, closePool } from './db/pool.js';
 import { migrate } from './db/migrate.js';
 import { isDatasetEmpty, runIngest } from './ingest/ingestService.js';
 
+/**
+ * The Express app, exported for Vercel.
+ *
+ * Deployed to Vercel the whole app becomes one Function on Fluid Compute, and
+ * Vercel imports this module and uses the default export. The long-running
+ * server behaviour below is therefore skipped there — see `main()`.
+ */
+const app = createApp();
+export default app;
+
+/**
+ * Local / self-hosted startup.
+ *
+ * Deliberately NOT run on Vercel, because every step here is wrong for a
+ * function that cold-starts:
+ *
+ *   - `process.exit(1)` on an unreachable database would kill the instance
+ *     rather than letting the request fail with a 503, which is what the
+ *     error middleware already does properly.
+ *   - `migrate()` would run on every cold start. It is transactional and
+ *     idempotent so it would not corrupt anything, but it adds a round trip
+ *     to the first request after each scale-up for no benefit. Migrations
+ *     belong in the deploy step (`npm run migrate`), not the request path.
+ *   - Ingest-on-boot would fire a 1,000-record import from a function
+ *     instance, repeatedly, as instances come and go.
+ *   - `app.listen()` and the SIGTERM handlers are meaningless where the
+ *     platform owns the process lifecycle.
+ */
 async function main(): Promise<void> {
   console.log(`[boot] starting in ${config.NODE_ENV} mode`);
 
@@ -36,7 +64,6 @@ async function main(): Promise<void> {
 
   await migrate();
 
-  const app = createApp();
   const server = app.listen(config.PORT, () => {
     console.log(`[boot] API listening on http://localhost:${config.PORT}`);
     console.log(`[boot] CORS allows: ${config.corsOrigins.join(', ')}`);
@@ -99,7 +126,10 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-main().catch((error: unknown) => {
-  console.error('[boot] fatal:', error instanceof Error ? error.stack : error);
-  process.exit(1);
-});
+// `VERCEL` is set in every Vercel build and runtime environment.
+if (!process.env.VERCEL) {
+  main().catch((error: unknown) => {
+    console.error('[boot] fatal:', error instanceof Error ? error.stack : error);
+    process.exit(1);
+  });
+}

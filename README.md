@@ -344,7 +344,8 @@ postgres       -> 1000 rows
 │   │   ├── routes/                sightings, insights, meta
 │   │   ├── middleware/            errorHandler.ts
 │   │   └── lib/                   errors.ts
-│   └── .env.example
+│   ├── .env.example
+│   └── vercel.json                Express on Fluid Compute
 ├── web/                           React + Vite frontend
 │   ├── src/
 │   │   ├── components/            map/ filters/ detail/ charts/ form/ layout/ ui/
@@ -353,9 +354,9 @@ postgres       -> 1000 rows
 │   │   ├── pages/                 Map, Learn, Report, About
 │   │   ├── data/                  Species guide and prevention content
 │   │   └── styles/                tokens, base, motion, components, leaflet
-│   └── .env.example
-├── DATABASE.md                    Schema walkthrough
-└── vercel.json                    Frontend deployment config
+│   ├── .env.example
+│   └── vercel.json                SPA rewrites for Vercel
+└── DATABASE.md                    Schema walkthrough
 ```
 
 ---
@@ -496,32 +497,40 @@ I would not call that coverage. The data layer is written as pure functions in
 handlers via supertest against a test database is where I would start. Type
 checking and linting do run clean across both packages.
 
-**Deployment.** Not currently deployed. `vercel.json` configures the frontend
-build and the build has been verified locally:
+**Deployment.** Both halves deploy to Vercel as **two projects from the same
+repository**, using Vercel's per-directory import.
 
-```json
-{
-  "installCommand": "npm --prefix web install",
-  "buildCommand": "npm --prefix web run build",
-  "outputDirectory": "web/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
+| Project | Root Directory | Framework | Config |
+|---|---|---|---|
+| Frontend | `web` | Vite | `web/vercel.json` |
+| API | `server` | Express | `server/vercel.json` |
 
-The rewrite is necessary — without it, refreshing on `/learn` or `/report`
-returns a 404, because those routes only exist client-side.
+The Express app runs as a single Vercel Function on Fluid Compute. `src/index.ts`
+exports the app as a default export, which is what Vercel imports.
 
-**Vercel deploys the frontend only.** The Express API is a long-running server,
-not serverless functions, so it needs separate hosting (Railway, Render, Fly).
-After deploying the API:
+The frontend config adds an SPA rewrite. Without it, refreshing on `/learn` or
+`/report` returns a 404, because those routes only exist client-side.
 
-1. Set `VITE_API_BASE_URL` in the Vercel project to the API's absolute URL
-2. Add the Vercel domain to `CORS_ORIGINS` on the API
+The server skips its local startup sequence when `process.env.VERCEL` is set.
+That matters: migrations, the ingest-on-boot check and `app.listen()` are all
+wrong for a function that cold-starts — migrations would run on the first
+request after every scale-up, and ingest would re-fire a 1,000-record import
+from each new instance. Migrations belong in the deploy step, so run
+`npm run migrate` (or `npm run ingest` for a first population) against the
+production database once, from a local machine, before the first deploy.
 
-Without those two steps the deployed frontend builds correctly but cannot load
-data.
+Required environment variables in the Vercel dashboard:
 
----
+| Project | Variable | Value |
+|---|---|---|
+| API | `DATABASE_URL` | PostgreSQL connection string |
+| API | `INGEST_ON_BOOT` | `false` |
+| API | `CORS_ORIGINS` | the frontend's deployed URL |
+| Frontend | `VITE_API_BASE_URL` | the API's deployed URL + `/api` |
+
+The two must be set in that order — the frontend needs the API's URL, and the
+API needs the frontend's origin for CORS, so each is deployed once and then
+updated with the other's domain.
 
 ## Limitations and future improvements
 

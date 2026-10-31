@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "express",
+  "regions": ["lhr1"],
+  "functions": {
+    "src/index.ts": {
+      "maxDuration": 60
+    }
+  }
+}
