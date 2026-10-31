@@ -1,153 +1,22 @@
-# TickTrack UK
+# UK Tick Sighting Tracker
 
-**Elanco Placement Programme — Technical Task (Full Stack)**
-**Mirzo-Ulugbek Fazilov**
+**Elanco Placement Programme — Full Stack Technical Task**
+**Mirzo-Ulug'bek Fazilov**
 
-A full-stack tick sighting tracker for the UK. A Node/TypeScript API ingests the
-Elanco dataset into PostgreSQL, enriches it with coordinates and a derived risk
-rating, and serves filtered searches and aggregate insights. A React/Vite
-frontend maps it, explains it, and lets people contribute sightings of their own.
+Ticks are spreading across the UK and carry diseases like Lyme disease. This is
+a web application that maps crowdsourced tick sightings so pet owners and vets
+can see what is happening near them, learn to identify the species involved,
+and report sightings of their own.
 
-```
-┌──────────────────┐   fetch + validate    ┌──────────────────┐   SQL    ┌──────────────┐
-│  Elanco API      │ ────────────────────► │  TickTrack API   │ ───────► │  PostgreSQL  │
-│  (read-only)     │   dedupe + enrich     │  Node + Express  │ ◄─────── │              │
-└──────────────────┘                       └──────────────────┘          └──────────────┘
-                                                    ▲
-                                                    │  REST (filters, facets, aggregates)
-                                                    ▼
-                                           ┌──────────────────┐
-                                           │  React + Vite    │
-                                           │  Leaflet map     │
-                                           └──────────────────┘
-```
-
-| | |
-|---|---|
-| **Frontend** | React 19, TypeScript, Vite, Leaflet, Recharts |
-| **Backend** | Node 22, TypeScript, Express 5, `pg`, Zod |
-| **Database** | PostgreSQL 16 (local or Supabase) |
+It is a full-stack build: a Node/TypeScript API pulls the Elanco dataset into
+PostgreSQL, processes it, and serves it to a React frontend.
 
 ---
 
-## Quick start
+## The problem that shaped the whole project
 
-Requires **Node 20.19+** and a **PostgreSQL 14+** database.
-
-```bash
-# 1. Database — either a local cluster…
-brew install postgresql@16 && brew services start postgresql@16 && createdb ticktrack
-#    …or a hosted one (Supabase). Either way you need a connection string.
-
-# 2. API
-cd server
-cp .env.example .env          # then set DATABASE_URL (see below)
-npm install
-npm run dev                   # migrates, ingests on first run, listens on :4000
-
-# 3. Frontend, in a second terminal
-cd web
-npm install
-npm run dev                   # http://localhost:5173
-```
-
-On first boot the API creates its schema, fetches all 1,000 upstream records,
-enriches them and writes them to Postgres. That takes about a second; the log
-reports what happened:
-
-```
-[migrate] applied 001_init.sql
-[boot] API listening on http://localhost:4000
-[ingest] success in 663ms — fetched 1000, inserted 1000, updated 0, rejected 0
-[ingest] severity breakpoints: { moderate: 53, high: 60, severe: 67 }
-```
-
-### Setting `DATABASE_URL`
-
-**Supabase** — Dashboard → **Connect** → *Connection string* → **URI**. Use the
-**session pooler** (port 5432) or transaction pooler (6543); the direct
-`db.<ref>.supabase.co` host is IPv6-only on the free tier and will not resolve
-on most networks. Replace `[YOUR-PASSWORD]` with your database password:
-
-```
-DATABASE_URL=postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres
-```
-
-**Local**:
-
-```
-DATABASE_URL=postgresql://localhost:5432/ticktrack
-```
-
-TLS is auto-detected from the host — off for `localhost`, on for anything else —
-so the same codebase runs against both with only this variable changing.
-`.env` is gitignored; `.env.example` documents every variable.
-
-Then point the app at it and check what landed:
-
-```bash
-cd server
-npm run migrate      # create the schema
-npm run ingest       # populate it
-npm run db:status    # report exactly what is in there
-```
-
-### Row Level Security on Supabase
-
-Supabase runs **PostgREST over the `public` schema** and publishes it on the
-project's public URL. Any table created there without RLS enabled is readable
-with the project's anon key — which is a public value, shipped in browser
-bundles. Creating these tables and walking away would publish the whole dataset.
-
-So `002_rls.sql` enables RLS on every table and revokes the `anon` /
-`authenticated` grants. With **no policies defined, every row is denied** to
-those roles. The API is unaffected: it connects as the database owner over a
-direct Postgres connection, and a table's owner is not subject to RLS.
-
-Deny by default, add policies deliberately if a use case appears. On a local
-cluster the migration is a harmless no-op.
-
-`npm run db:status` reports RLS state per table and flags anything unprotected
-when the target is Supabase.
-
-See **[DATABASE.md](DATABASE.md)** for a full walkthrough of the schema, how
-severity is calculated, why marker positions are offset, and why the Supabase
-dashboard shows "No migrations" (it reads the Supabase CLI's bookkeeping table,
-not ours).
-
-### Resetting
-
-```bash
-npm run db:status          # what is in there now
-npm run db:reset           # dry run — prints what it would drop, changes nothing
-npm run db:reset -- --yes  # actually drop this app's tables and re-migrate
-```
-
-`db:reset` drops only the six tables this application creates, **by name**. It
-never issues `DROP SCHEMA public CASCADE` — on Supabase that would destroy
-auth, storage and realtime along with it.
-
-### Scripts
-
-| Location | Command | Does |
-|---|---|---|
-| `server/` | `npm run dev` | API with hot reload |
-| | `npm run migrate` | Apply migrations only |
-| | `npm run ingest` | Migrate, then run the pipeline once |
-| | `npm run db:status` | Report tables, row counts, RLS, migration and ingest history |
-| | `npm run db:reset` | Dry run; `-- --yes` to drop this app's tables and re-migrate |
-| | `npm run build` / `start` | Compile to `dist/`, run compiled |
-| | `npm run typecheck` | `tsc --noEmit` |
-| `web/` | `npm run dev` | Vite dev server, proxies `/api` → `:4000` |
-| | `npm run build` | Type-check then production bundle |
-| | `npm run lint` | oxlint, including React compiler rules |
-
----
-
-## The finding that shaped the architecture
-
-Before writing code I checked what the upstream API actually returns. It is five
-fields:
+The first thing I did was check what the Elanco API actually returns. Every
+record is five fields:
 
 ```json
 {
@@ -159,339 +28,544 @@ fields:
 }
 ```
 
-The brief asks for markers indicating **severity**, **recent activity** and
+The brief asks for map markers showing **severity**, **recent activity** and
 **species**, a **severity filter**, and **aggregates per region**. Only species
-is in the payload. There are **no coordinates at all**, no severity field, and
+is in the payload. There are no coordinates at all, no severity field, and
 nothing that makes "recent" meaningful.
 
-So three things are derived — and because this is a full-stack build, they are
-derived **once at ingest time on the server**, not repeatedly in every browser.
-That is the single most important architectural decision here, and the reason
-the frontend is now purely presentational.
+So three things have to be derived. Because this is full-stack, I derive them
+**once on the server during ingest** and store the results, rather than
+recomputing them in every browser. That decision is why the frontend ended up
+purely presentational, and it is the thing I would most want to talk through in
+an interview.
 
-### 1. Coordinates — `server/src/domain/geo.ts`
+**1. Coordinates.** City names resolve against a table of 14 UK centroids.
+Putting all 72 Manchester records on one pixel would draw a single marker and
+hide that there are 72, so each sighting is offset from its centroid using a
+hash of its own id. Deterministic, so a sighting lands on the same spot every
+load and shared links stay valid — `Math.random()` would make markers jump
+between renders. Bounded to about 6 km, the size of the city, so it never
+pretends to be a street address. Both positions are stored: the offset one for
+drawing, the real centroid for "Get directions".
 
-City names resolve against a table of 14 UK centroids. Plotting all 72
-Manchester records on one pixel would collapse them into a single marker, so
-each sighting is offset from its centroid by an amount derived from an FNV-1a
-hash of its own id. Two properties matter: it is **deterministic**, so a
-sighting lands on the same spot on every load and deep links stay valid
-(`Math.random()` would make markers jump between renders); and it is **bounded
-to ~6 km**, the footprint of the city, so it never implies precision the data
-does not have.
-
-Consequently **"Get directions" routes to the city centre, not the marker** —
-navigating someone to a hash-derived point would send them somewhere with no
-relationship to the sighting.
-
-### 2. Severity — `server/src/domain/severity.ts`
-
-A 0–100 score from three weighted components, each from a real field:
-
-| Component | Weight | What it measures |
-|---|---:|---|
-| Local activity density | 50% | Sightings in the same city within ±45 days of the same point in the year, across all years |
-| Species vector weight | 30% | Higher for *Ixodes* (the UK's Lyme borreliosis genus) than *Dermacentor* |
-| Seasonal questing pressure | 20% | Position on the bimodal UK activity curve |
-
-**The four levels are percentiles, not fixed cut-offs** — and that was a
-measured decision, not a preference. Fixed thresholds were tried first and put
-0.6% of sightings in "low" and 4.4% in "severe", which makes three of the four
-filter options nearly useless. Percentile breakpoints give a usable spread:
+**2. Severity.** A 0–100 score from three weighted parts: local activity
+density (50%), species vector weight (30%), and seasonal questing pressure
+(20%). The four levels are **percentiles of the dataset's own distribution**,
+not fixed cut-offs. I tried fixed thresholds first and measured the result —
+they put 0.6% of sightings in "low" and 4.4% in "severe", which makes three of
+the four filter buttons useless. Percentiles, computed by Postgres with
+`percentile_cont`, give a usable spread:
 
 ```
 low 279 (27.9%) · moderate 279 (27.9%) · high 271 (27.1%) · severe 171 (17.1%)
 ```
 
-They are computed **in SQL** with `percentile_cont` at the end of each ingest,
-so they self-adjust as the data changes and stay correct as the table grows.
-Every rating is explainable: the API returns the three components and their
-reasoning with each sighting, and the detail panel shows the working.
+The score and its three components are stored per row, so the API can explain a
+rating instead of asking the user to trust a colour.
 
-### 3. Recency — `server/src/db/sightingsRepo.ts`
+**3. Recency.** The dataset ends 30 December 2024. Measuring "recent" against
+the real clock would mark every record stale, so the 90-day window is measured
+back from the newest record in the data. The UI says exactly that wherever
+recency appears.
 
-The dataset ends **30 December 2024**. Measuring recency against the wall clock
-would mark every record stale and the indicator would convey nothing. The 90-day
-window is measured back from the **newest record in the data**, and the UI says
-exactly that wherever recency appears.
+These ratings are **modelled by this application, not supplied by Elanco**, and
+the app states that wherever one appears.
 
 ---
 
-## Backend
+## Features
 
-### Data handling & processing — `server/src/ingest/`
+**Map**
 
-The pipeline is `fetch → validate → enrich → upsert → derive levels`, built
-around the four concerns the brief names.
+- Leaflet map of the UK with zoom-aware marker clustering
+- Markers encode severity as both colour and size, recency as a pulsing ring,
+  and community reports as a different shape
+- Filters for date range, species, severity, city and recency — all applied
+  server-side, with live counts showing how many results each option would give
+- Click a marker for a detail panel: full record, the severity breakdown with
+  reasoning, and a per-year activity timeline for the surrounding 25 km
+- Quick actions: report a sighting, get directions, share (produces a
+  `?sighting=<id>` link that reopens the panel)
 
-**Large datasets.** Rows are written with a multi-row `INSERT` per 500-record
-batch rather than one statement each — 1,000 round trips costs seconds, four
-batched statements costs milliseconds. The whole ingest runs in one transaction,
-so a failure half way through leaves the previous dataset intact.
+**Analytics** — all computed in SQL, not in the browser
 
-**Duplicates.** The upstream id is the primary key and inserts are
-`ON CONFLICT (id) DO UPDATE`. Ingest is therefore **idempotent** — verified:
+- Seasonal activity chart with city and year dropdowns
+- Species breakdown and yearly trend
+- Regional aggregates with mean severity
+
+**Education**
+
+- Identification guide for the five species in the dataset, with drawn
+  illustrations showing the actual distinguishing features
+- Prevention and safe tick-removal guidance
+
+**Reporting**
+
+- Form with date, time, location, species and notes
+- Validation with three distinct states: errors block submission, warnings do
+  not (a 3am sighting is unusual, not invalid), and success confirms
+- Image upload with type and size checks, automatic downscaling, and a prompt
+  for alt text
+- Submitted reports are scored by the same model and become part of the
+  dataset — they appear on the map, in the charts and in the filter counts
+
+**Accessibility and design**
+
+- Light and dark themes, keyboard-navigable map markers, live regions
+  announcing filter results, table alternatives for every chart
+- The severity colour ramp is single-hue and ordered by lightness. I measured
+  the obvious green-to-red traffic light and rejected it: red against green is
+  ΔE 4.1 under deuteranopia, effectively identical for a large share of male
+  users. Lightness survives colour-vision deficiency.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Frontend | React 19, TypeScript, Vite | Vite over Next.js — no server-rendering requirement for a client-side map, and no SEO need |
+| Map | Leaflet + OpenStreetMap | No API key and no billing account, so anyone can clone and run it. Mapbox and Google Maps both require one |
+| Charts | Recharts | Composable SVG, accessible by default. Code-split so it only loads on the Learn page |
+| Backend | Node 22, TypeScript, Express 5 | Express 5 propagates async errors natively. Fastify is faster but this workload is database-bound, so the difference is noise |
+| Database | PostgreSQL 17 (Supabase) | The interesting work here is aggregate SQL |
+| DB driver | `pg` | Not an ORM — see below |
+| Validation | Zod | Derives TypeScript types from the runtime schema, so the two cannot drift |
+
+**Why `pg` and not Prisma or TypeORM.** The useful work is `percentile_cont`,
+`date_trunc`, `FILTER (WHERE …)` and faceted counts. With an ORM I would be
+writing all of that as raw SQL anyway, just through an extra layer. An ORM
+would earn its place with a dozen related tables and heavy relational mapping;
+there are six tables and the queries are analytical.
+
+**Why no data-fetching library.** TanStack Query would fit, and it is a close
+call now there are several endpoints and a mutation. What the app actually
+needs — debounce, request cancellation, keep-previous-data — is about fifty
+lines, and writing them explicitly made an out-of-order-response bug obvious
+that a library would have hidden. I would add it if a third component needed
+the same cached endpoint.
+
+**Why plain-SQL migrations.** The whole schema is one file. A migration
+framework adds a CLI, a config file and a DSL to run `psql -f`. My runner is
+about 70 lines and still gives ordering, idempotency, per-file transactions and
+a checksum that catches an already-applied migration being edited.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    E["Elanco API<br/>read-only, rate limited"]
+    I["Ingest pipeline<br/>validate / enrich / upsert"]
+    DB[("PostgreSQL<br/>Supabase")]
+    API["Express API<br/>filters, facets, aggregates"]
+    W["React + Vite<br/>Leaflet map"]
+
+    E -->|"GET /tick-sightings, retry + backoff"| I
+    I -->|"batched upsert, ON CONFLICT DO UPDATE"| DB
+    API -->|SQL| DB
+    DB -->|rows| API
+    W <-->|"REST /api/*"| API
+```
+
+The flow in words:
+
+1. **Ingest** runs on boot when the table is empty, or on demand via
+   `npm run ingest`. It fetches all 1,000 records, validates each one, resolves
+   the city to coordinates, scores severity, and upserts in batches.
+2. **Severity levels** are then assigned from percentiles computed in SQL, and
+   the breakpoints stored in `dataset_meta`.
+3. **The API** serves filtered searches with facet counts, plus aggregate
+   endpoints. Everything is a SQL `GROUP BY`, not an array reduce.
+4. **The frontend** holds filter state and renders. It derives nothing about
+   the data itself.
+
+The Elanco API is read-only — `POST` returns `405 Method Not Allowed` — which
+is exactly why the application needs its own database to accept reports.
+
+---
+
+## Data processing
+
+**Fetching.** Every upstream request has a timeout and retries up to three
+times with exponential backoff plus jitter. Jitter matters: without it, every
+client that failed at the same moment retries at the same moment. `Retry-After`
+is honoured on 429. A 4xx other than 429 is not retried, because a malformed
+request will fail identically next time.
+
+**Validation.** Each record is checked structurally before it reaches SQL. A
+row missing an id, a parseable date, a location or a species is **rejected, not
+coerced** — and so is one naming a city we have no coordinates for, because a
+sighting that cannot be placed is not something a map can honestly show.
+
+**Incomplete data.** Every rejection is tallied by reason into
+`ingest_runs.rejection_reasons` (a `jsonb` column), so nothing is silently
+dropped. On the current dataset nothing is rejected, but if the upstream data
+changed, the count and the reason would be visible immediately:
+
+```sql
+SELECT status, fetched, inserted, updated, rejected, rejection_reasons
+FROM ingest_runs ORDER BY started_at DESC;
+```
+
+**Duplicates.** The upstream id is the primary key and inserts use
+`ON CONFLICT (id) DO UPDATE`, so ingest is idempotent. Running it twice
+produces the same database and picks up any upstream corrections:
 
 ```
 run 1: fetched 1000, inserted 1000, updated    0, rejected 0
 run 2: fetched 1000, inserted    0, updated 1000, rejected 0
 ```
 
-`RETURNING (xmax = 0)` is what distinguishes an insert from an update, so the
-run can be reported honestly rather than guessed at.
+`RETURNING (xmax = 0)` is what distinguishes an insert from an update in the
+same statement, so the run can be reported accurately rather than estimated.
 
-**Incomplete data.** Records are validated structurally before they reach SQL. A
-row missing an id, a parseable date, a location or a species is **rejected, not
-coerced**, and so is one naming a city we cannot place — a sighting we cannot
-locate is not something a map can honestly show. Every rejection is tallied by
-reason into `ingest_runs.rejection_reasons`, so nothing is silently dropped:
+**Large datasets.** Rows are written with one multi-row `INSERT` per 500-record
+batch rather than a statement each — a thousand round trips costs seconds, four
+batched statements costs milliseconds. The whole ingest is one transaction, so
+a failure part-way leaves the previous dataset intact.
 
-```sql
-SELECT id, status, fetched, inserted, updated, rejected, rejection_reasons
-FROM ingest_runs ORDER BY started_at DESC;
+**Error handling.** A typed error taxonomy is mapped to status codes by one
+middleware, so route handlers throw and never think about HTTP. Upstream
+failures become 502/429, `pg` connection errors become 503, Zod failures become
+400 with per-field messages the report form displays inline, and oversized
+bodies become 413 with an actionable message. Stack traces, SQL and connection
+strings are logged but never serialised into a response.
+
+Verified behaviour:
+
+```
+404  unknown route, unknown sighting id
+400  inverted date range, invalid severity, bad date format
+400  future sighting date, invalid city/species/time (three field-level messages)
+404  DELETE on an Elanco record (refused — those belong to the pipeline)
 ```
 
-**Scheduling.** Ingest runs on boot only when the table is empty, and never
-blocks the HTTP listener — a platform health check would otherwise time out and
-restart the container mid-import, forever. In production this belongs in a cron
-job; `npm run ingest` exists for exactly that.
+**Timezone handling.** The upstream `date` has no timezone designator, so
+`observed_at` is `TIMESTAMP` rather than `TIMESTAMPTZ`, and the `pg` type
+parser for OID 1114 is overridden to return the raw string. Letting the driver
+reinterpret it would shift every British-summer sighting by an hour and
+occasionally across a date boundary.
 
-### Schema — `server/src/db/migrations/001_init.sql`
+**Not implemented, would do with more time:** scheduled ingest rather than
+boot-triggered, structured logging, and rate limiting on the write endpoint.
 
-| Table | Purpose |
-|---|---|
-| `sightings` | Fact table. Elanco records and user reports in one table, distinguished by `source`, so every query treats them identically without a `UNION`. |
-| `cities`, `species` | Reference data, mirrored from code so aggregates can `GROUP BY` region in SQL. |
-| `dataset_meta` | One row: severity breakpoints, density normaliser, date bounds. |
-| `ingest_runs` | Audit row per run — the answer to "how did you handle duplicates and incomplete data". |
+---
 
-All six tables (including `schema_migrations`) have RLS enabled — see
-[Row Level Security on Supabase](#row-level-security-on-supabase).
+## API
 
-`observed_at` is `TIMESTAMP` (not `TIMESTAMPTZ`) on purpose: upstream sends no
-timezone designator, and letting the driver reinterpret it would shift every
-British-summer sighting by an hour and occasionally across a date boundary. The
-`pg` type parser for OID 1114 is overridden for the same reason.
+All endpoints return JSON. Errors use a consistent
+`{ "error": { "code", "message", "details"? } }` shape.
 
-Indexed on `observed_at`, `location`, `species`, `severity_level`, `source`, plus
-a composite `(location, observed_at DESC)` for the commonest query shape.
-
-### Endpoints
-
-| Method | Path | Notes |
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Database and upstream checked independently; only the database affects the status code |
+| `GET` | `/api/health` | Database and upstream API checked separately; only the database affects the status code |
 | `GET` | `/api/meta` | Cities, species, severity breakpoints, date range, last ingest — so the frontend hard-codes nothing |
-| `GET` | `/api/sightings` | Filter by `from`, `to`, `city`, `species`, `severity`, `source`, `recentOnly`; `limit`/`offset`. Returns data **+ facet counts** |
-| `GET` | `/api/sightings/:id` | One record |
-| `GET` | `/api/sightings/:id/image` | Photograph, served separately from the JSON |
-| `POST` | `/api/sightings` | Create a report; 201 with the scored record |
-| `DELETE` | `/api/sightings/:id` | User reports only — Elanco records are owned by the pipeline |
-| `GET` | `/api/insights/regions` | Sightings per region, with mean severity |
-| `GET` | `/api/insights/trends?interval=week\|month\|year` | Time series via `date_trunc` |
+| `GET` | `/api/sightings` | Search. Filters: `from`, `to`, `city`, `species`, `severity`, `source`, `recentOnly`, `limit`, `offset`. Returns data, totals and facet counts |
+| `GET` | `/api/sightings/:id` | One sighting |
+| `GET` | `/api/sightings/:id/image` | Attached photograph, served separately from the JSON |
+| `POST` | `/api/sightings` | Create a report. Returns 201 with the scored record |
+| `DELETE` | `/api/sightings/:id` | User reports only |
+| `GET` | `/api/insights/regions` | Sightings per region with mean severity |
+| `GET` | `/api/insights/trends` | Time series; `?interval=week\|month\|year` |
 | `GET` | `/api/insights/species` | Breakdown by species |
 | `GET` | `/api/insights/seasonal` | Twelve monthly counts, including empty months |
-| `GET` | `/api/insights/summary` | Headline figures in one pass |
-| `POST` | `/api/admin/ingest` | Manual re-ingest (see Limitations) |
+| `GET` | `/api/insights/summary` | Headline figures in one query |
+| `POST` | `/api/admin/ingest` | Trigger a re-ingest |
+| `GET` | `/api/admin/ingest/status` | Last run, and whether the dataset is empty |
 
-Every insights endpoint accepts the same filters as `/api/sightings`, so a chart
-can always be scoped to exactly what the map is showing.
+Every insights endpoint accepts the same filters as `/api/sightings`, so a
+chart can always be scoped to exactly what the map is showing.
 
-**Facets are the detail worth noticing.** Each filter option shows how many
-sightings it would yield. Each dimension is counted with **its own filter
-excluded** — so ticking "Severe" still shows what Low, Moderate and High would
-give you. Counting facets against the fully filtered set is the classic faceted
-search bug: every unselected option reports 0 and looks unavailable when in fact
-it would widen the result. (This was caught and fixed during testing.)
+**Facets are worth noting.** Each filter option shows how many results it would
+produce, and each dimension is counted with **its own filter excluded**. So
+ticking "Severe" still shows what Low, Moderate and High would give. Counting
+facets against the fully filtered set is a common bug — every unselected option
+reports 0 and looks unavailable when it would actually widen the result.
 
-### Error handling — `server/src/lib/errors.ts`, `middleware/errorHandler.ts`
+---
 
-A typed error taxonomy mapped to status codes by one middleware, so handlers
-throw and never think about HTTP.
+## Database
 
-- **Upstream failures.** Timeout on every request; exponential backoff with
-  **jitter** (without it, every client that failed together retries together);
-  `Retry-After` honoured on 429; 4xx other than 429 not retried, because a
-  malformed request fails identically next time. A failed ingest never takes the
-  process down — the API keeps serving what is already stored.
-- **Database failures.** `pg` connection errors are recognised by code and
-  become a 503, so a client can tell a transient outage from a bug.
-- **Invalid submissions.** Zod validates every query and body; failures return
-  400 with **per-field messages** that the report form surfaces inline.
-- **Oversized bodies** become a 413 with an actionable message rather than an
-  opaque 500.
-- **Nothing internal leaks.** Stack traces, SQL and connection strings go to the
-  log; the client gets a stable `code` and a sentence written for a human.
+Six tables in `public`. Full walkthrough in **[DATABASE.md](DATABASE.md)**.
 
-Verified:
+| Table | Rows | Purpose |
+|---|---:|---|
+| `sightings` | 1000 | Fact table. Elanco records and user reports together, separated by `source`, so no query needs a `UNION` |
+| `cities` | 14 | City centroids and regions — how a city name becomes a map point, and how regional aggregates group |
+| `species` | 5 | Latin names, genus, vector weight for the severity model, fixed chart colour slot |
+| `dataset_meta` | 1 | Severity breakpoints and date bounds, recomputed each ingest |
+| `ingest_runs` | — | Audit row per run: fetched, inserted, updated, rejected, and why |
+| `schema_migrations` | 2 | Applied migrations with checksums |
+
+`sightings` has 21 columns, but only 5 come from Elanco. The rest —
+coordinates, severity score, severity level and the three score components —
+are computed during ingest.
+
+Indexed on `observed_at`, `location`, `species`, `severity_level`, `source`,
+plus a composite `(location, observed_at DESC)` for the commonest query shape.
+
+**Row Level Security.** Supabase runs PostgREST over the `public` schema and
+publishes it at the project URL, so any table there without RLS is readable
+with the project's anon key — which is public by design and ships in browser
+bundles. `002_rls.sql` enables RLS on every table and revokes the `anon` and
+`authenticated` grants. With no policies defined, every row is denied to those
+roles; the API is unaffected because it connects as the table owner, which is
+not subject to RLS. Verified:
 
 ```
-404 NOT_FOUND          GET /api/nope
-404 NOT_FOUND          unknown sighting id
-400 VALIDATION_FAILED  from=2024-12-31&to=2020-01-01   (inverted range)
-400 VALIDATION_FAILED  severity=catastrophic
-400 VALIDATION_FAILED  future date → "A sighting has to have already happened."
-400 VALIDATION_FAILED  bad city/species/time → three field-level messages
-404 NOT_FOUND          DELETE on an Elanco record (refused by design)
+anon           -> 42501 permission denied for table sightings
+authenticated  -> 42501 permission denied for table sightings
+postgres       -> 1000 rows
 ```
 
 ---
 
-## Frontend
-
-All twelve of the brief's frontend requirements are implemented.
-
-**1. Interactive map** — Leaflet + OpenStreetMap (no API key, so a reviewer can
-clone and run). Markers encode severity as **both fill and diameter**, recency
-as a pulsing ring, and provenance as shape. Zoom-aware clustering is
-hand-rolled: `leaflet.markercluster` has no React 19 support, mutates the DOM
-outside React, and builds icons from HTML strings that design tokens cannot
-reach. Filters for date range, species, severity, city and recency, all
-server-side with live facet counts.
-
-**2. Sighting information** — Detail panel on marker click with the full record
-and the severity derivation; a per-year activity timeline for the surrounding
-25 km; quick actions for Report, Get Directions and Share (Web Share API →
-clipboard → visible link fallback, producing a `?sighting=<id>` deep link).
-
-**3. Education** — Species identification guide for the five species in the
-dataset, with schematic illustrations drawn to show the actual distinguishing
-characters; prevention and safe-removal guidance; the seasonal activity chart
-with **city and year dropdowns**, plus species and yearly trend charts — all
-reading from `/api/insights/*`.
-
-**4. Report a sighting** — Form with date, time, location, species and notes;
-validation with distinct **error, warning and success** states (errors block,
-warnings do not — a 3am sighting is unusual, not invalid); image upload with
-type/size checks, automatic downscaling and a prompt for alt text.
-
-### Design
-
-Plain CSS with a token system — no utility framework, no component library, no
-motion library. Radii derive from one `--radius` base so nested corners stay
-concentric; elevation is three-layer (contact + ambient + distant) tinted with
-the brand hue; motion is hand-written CSS limited to `transform` and `opacity`
-so it composites off the main thread.
-
-**Colour is validated, not chosen by eye.** The severity ramp is single-hue and
-ordered by lightness. The obvious green-to-red traffic light was measured and
-**rejected**: red against green is **ΔE 4.1 under deuteranopia** — effectively
-identical for a large share of male users — and amber against orange fails even
-the normal-vision floor at 13.6. Lightness survives colour-vision deficiency, so
-the ramp is ordered by it. The five species colours were separately validated
-(worst adjacent pair ΔE 9.1 light / 8.4 dark against a ≥8 target).
-
-### Accessibility
-
-Targeting WCAG 2.2 AA. Skip link, landmark regions, one `h1` per page. Map
-markers are focusable and respond to Enter *and* Space with accessible names
-naming species, place, date and rating. Filter changes are announced through a
-polite live region, since the map conveys nothing to a non-sighted user. Focus
-moves to the detail panel when it opens and to the error summary when a submit
-is rejected; Escape closes panels and restores focus. Route changes update the
-title and move focus, which an SPA does not do on its own. Every chart has a
-table alternative and states its finding in prose. Nothing depends on colour
-alone. 44px targets, `:focus-visible` rings, `prefers-reduced-motion`,
-`forced-colors`.
-
-One contrast bug found during testing — a dark badge ink left on a dark tint,
-measuring **1.14:1** — was fixed to 9.9:1.
-
-### Wireframes
-
-Desktop and mobile, on the **About** page, drawn as inline SVG so they live in
-the repo as reviewable source and theme with the app.
-
----
-
-## Technical choices
-
-| Choice | Why, and what was rejected |
-|---|---|
-| **Express 5** | Native async error propagation, stable, minimal. Fastify is faster, but this workload is database-bound and the difference is noise. |
-| **`pg` over an ORM** | The interesting work here is aggregate SQL — `percentile_cont`, `date_trunc`, `FILTER (WHERE …)`, faceted counts. An ORM would mean writing that as raw SQL anyway, through a layer. Prisma would earn its place the moment there were a dozen related tables. |
-| **Plain-SQL migrations** | The whole schema is one file. A migration framework adds a CLI, a config and a DSL to run `psql -f`. The runner is ~70 lines and still gives ordering, idempotency, per-file transactions and a checksum that catches an applied migration being edited. |
-| **Zod** | Validation is the one place where hand-rolling is a false economy — the types and the runtime checks must not drift, and Zod derives one from the other. |
-| **Severity at ingest, not query time** | It is expensive (an O(n²)-ish density index) and dataset-relative. Computing it per request would make every query slow and the answers inconsistent between them. |
-| **Server-side filtering** | The brief asks for it, and a client that downloads the whole table to narrow it stops working the moment the table exceeds a browser tab. Costs a round trip per change, paid for with a 220ms debounce and keep-previous-results. |
-| **No data-fetching library** | A close call now there are several endpoints and a mutation. TanStack Query would fit. The ~50 lines it replaces are explicit about an out-of-order-response bug that is easy to get wrong, and are commented as such. **Trigger to revisit:** a third consumer of the same endpoint, or the first cache-invalidation requirement. |
-| **Two type files, not a shared package** | The contract is mirrored in `server/src/types.ts` and `web/src/types/sighting.ts`. A workspace package buys compile-time coupling across one boundary at the cost of build ordering and a publish step. **Trigger to revisit:** a second API consumer. |
-| **Leaflet + OSM** | No key, no billing account. Mapbox and Google Maps both gate behind one. |
-| **Recharts** | Composable, accessible-by-default SVG. Code-split so it only loads on `/learn`. |
-
----
-
-## Known limitations
-
-Stated plainly, because a prototype that hides its edges is harder to review.
-
-- **No automated test suite.** Effort went into the data layer being correct by
-  construction — pure functions in `server/src/domain/` — and into manual
-  end-to-end verification. The severity distribution, ingest idempotency, every
-  endpoint and every error path were exercised and are quoted above. Those pure
-  modules plus the route handlers (via supertest against a test database) are
-  exactly what a Vitest suite should target first, and that is the honest next
-  step rather than a claim of coverage.
-- **`POST /api/admin/ingest` is unauthenticated.** It is there so a reviewer can
-  re-run the pipeline. In production it needs auth, or better, deleting in
-  favour of a scheduled job — a long-running import triggered by an open HTTP
-  endpoint is an obvious way to overload both services.
-- **Images are base64 in a `TEXT` column.** Fine for an MVP with downscaled
-  ~100 KB photographs, and they are served from a dedicated endpoint so they
-  never bloat the list payload. Production belongs in object storage with
-  signed URLs; the row would hold a key instead.
-- **No authentication.** Anyone can post or delete a report. Real crowdsourcing
-  needs accounts, rate limiting and moderation.
-- **TLS chain verification is disabled** for hosted Postgres
-  (`rejectUnauthorized: false`). The connection is encrypted; the chain is not
-  verified, because Supabase's CA is not in Node's trust store. The correct fix
-  is to ship that CA certificate and pass it as `ca`.
-- **Marker positions are approximate by construction** — see above.
-- **The dataset's seasonality is flat.** Sightings are spread fairly evenly
-  across the calendar, so the seasonal chart does not show the strong spring
-  peak UK tick activity really has. That is a property of the supplied data.
-- **Dark-mode map tiles are filtered, not designed.** OSM publishes only a light
-  raster style; dark mode desaturates and inverts it rather than adding a second
-  provider.
-
----
-
-## Content notes
-
-Species descriptions are written at the level the sources support — genus-level
-ecology and morphology — rather than inventing species-level specifics. Where a
-claim would need a clinical source I do not have, the entry says so. Worth
-noting: *Ixodes ricinus*, the tick most often found on UK pets and people, does
-not appear in this dataset at all.
-
-Prevention content reflects standard published UK public-health and veterinary
-guidance. It is general education, and the UI pairs it with a visible statement
-that it is not veterinary or medical advice.
-
-**Risk ratings are modelled by this application, not supplied by Elanco.**
-
----
-
-## Repository layout
+## Project structure
 
 ```
 .
-├── server/                  Node + TypeScript API
-│   └── src/
-│       ├── db/              Pool, migrations, repository (all SQL)
-│       ├── domain/          Cities, species, geocoding, severity model
-│       ├── ingest/          Upstream client + pipeline
-│       ├── routes/          sightings, insights, meta/health/admin
-│       ├── middleware/      Error handling
-│       └── lib/             Error taxonomy
-└── web/                     React + Vite frontend
-    └── src/
-        ├── components/      map/ filters/ detail/ charts/ form/ layout/ ui/
-        ├── hooks/           Data provider, insights, theme
-        ├── lib/             API client, display helpers, colours
-        ├── pages/           Map, Learn, Report, About
-        └── styles/          tokens, base, motion, components, leaflet
+├── server/                        Node + TypeScript API
+│   ├── src/
+│   │   ├── index.ts               Entry point, startup order, graceful shutdown
+│   │   ├── app.ts                 Express assembly and middleware order
+│   │   ├── config.ts              Environment parsing, validated with Zod
+│   │   ├── types.ts               API contract types
+│   │   ├── db/
+│   │   │   ├── pool.ts            Connection pool, SSL auto-detection
+│   │   │   ├── migrate.ts         Migration runner
+│   │   │   ├── sightingsRepo.ts   All SQL lives here
+│   │   │   ├── status.ts          npm run db:status
+│   │   │   ├── reset.ts           npm run db:reset
+│   │   │   └── migrations/        001_init.sql, 002_rls.sql
+│   │   ├── domain/                cities, species, geo, severity model
+│   │   ├── ingest/                elancoClient.ts, ingestService.ts, run.ts
+│   │   ├── routes/                sightings, insights, meta
+│   │   ├── middleware/            errorHandler.ts
+│   │   └── lib/                   errors.ts
+│   └── .env.example
+├── web/                           React + Vite frontend
+│   ├── src/
+│   │   ├── components/            map/ filters/ detail/ charts/ form/ layout/ ui/
+│   │   ├── hooks/                 Data provider, insights, theme
+│   │   ├── lib/                   API client, display helpers, colours
+│   │   ├── pages/                 Map, Learn, Report, About
+│   │   ├── data/                  Species guide and prevention content
+│   │   └── styles/                tokens, base, motion, components, leaflet
+│   └── .env.example
+├── DATABASE.md                    Schema walkthrough
+└── vercel.json                    Frontend deployment config
 ```
+
+---
+
+## Getting started
+
+**Requirements:** Node 20.19+ (or 22+) and a PostgreSQL 14+ database.
+
+### 1. Database
+
+Either a local cluster:
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createdb ticktrack
+```
+
+Or a hosted one. I used Supabase — **Dashboard → Connect → Connection string →
+URI**, taking the **session pooler** (port 5432). The direct
+`db.<ref>.supabase.co` host is IPv6-only on the free tier and will not resolve
+on most networks, and the transaction pooler (6543) does not fully support the
+extended query protocol `pg` uses for parameterised queries.
+
+### 2. API
+
+```bash
+cd server
+cp .env.example .env
+```
+
+Set `DATABASE_URL` in `server/.env`:
+
+```bash
+# local
+DATABASE_URL=postgresql://localhost:5432/ticktrack
+
+# or Supabase (percent-encode any special characters in the password)
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres
+```
+
+TLS is auto-detected from the hostname — off for localhost, on for anything
+else — so the same code runs against both.
+
+```bash
+npm install
+npm run dev
+```
+
+On first run this applies both migrations, fetches the 1,000 records and writes
+them to the database:
+
+```
+[migrate] applied 001_init.sql
+[migrate] applied 002_rls.sql
+[boot] API listening on http://localhost:4000
+[ingest] success in 1104ms — fetched 1000, inserted 1000, updated 0, rejected 0
+[ingest] severity breakpoints: { moderate: 53, high: 60, severe: 67 }
+```
+
+### 3. Frontend
+
+In a second terminal:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open <http://localhost:5173>. No frontend configuration is needed locally — the
+Vite dev server proxies `/api` to port 4000.
+
+### Environment variables
+
+`server/.env` — only `DATABASE_URL` is required:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | — | **Required.** PostgreSQL connection string |
+| `PORT` | `4000` | API port |
+| `NODE_ENV` | `development` | |
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins |
+| `ELANCO_API_BASE_URL` | `https://dev-task.elancoapps.com/data` | Upstream API |
+| `ELANCO_TIMEOUT_MS` | `20000` | Per-request timeout |
+| `INGEST_ON_BOOT` | `true` | Ingest on startup when the table is empty |
+| `MAX_BODY_SIZE` | `8mb` | Must clear a base64 photograph |
+| `MAX_PAGE_SIZE` | `5000` | Largest page `/api/sightings` will return |
+| `DATABASE_SSL` | auto | Override TLS auto-detection |
+
+`web/.env` — all optional locally:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_API_BASE_URL` | `/api` | Absolute API URL when deployed separately |
+| `VITE_MAP_TILE_URL` | OpenStreetMap | Alternative tile provider |
+| `VITE_MAP_TILE_ATTRIBUTION` | OpenStreetMap | Must match the provider's terms |
+| `VITE_MAX_IMAGE_SIZE_MB` | `5` | Upload size limit |
+
+No API keys are needed. The Elanco API is public and OpenStreetMap tiles
+require no account.
+
+---
+
+## Commands
+
+| Where | Command | What it does |
+|---|---|---|
+| `server/` | `npm run dev` | API with hot reload |
+| | `npm run migrate` | Apply migrations only |
+| | `npm run ingest` | Migrate then run the pipeline once |
+| | `npm run db:status` | Tables, row counts, RLS state, migration and ingest history |
+| | `npm run db:reset` | Dry run; add `-- --yes` to drop this app's tables and re-migrate |
+| | `npm run build` / `npm start` | Compile to `dist/` and run |
+| | `npm run typecheck` | `tsc --noEmit` |
+| `web/` | `npm run dev` | Vite dev server |
+| | `npm run build` | Type-check then production bundle |
+| | `npm run lint` | oxlint, including React compiler rules |
+
+From the repo root, `npm run typecheck` and `npm run build` run against both
+packages.
+
+`npm run db:reset` drops only the six tables this app creates, by name. It
+never runs `DROP SCHEMA public CASCADE` — on Supabase that would destroy auth,
+storage and realtime along with it.
+
+---
+
+## Testing and deployment
+
+**Testing.** There is no automated test suite. I verified the application
+manually and end-to-end: ingest idempotency, the severity distribution, every
+API endpoint, every error path, the report submission round trip, and the RLS
+lockdown. The figures quoted in this README come from those runs.
+
+I would not call that coverage. The data layer is written as pure functions in
+`server/src/domain/` specifically so it is testable, and that plus the route
+handlers via supertest against a test database is where I would start. Type
+checking and linting do run clean across both packages.
+
+**Deployment.** Not currently deployed. `vercel.json` configures the frontend
+build and the build has been verified locally:
+
+```json
+{
+  "installCommand": "npm --prefix web install",
+  "buildCommand": "npm --prefix web run build",
+  "outputDirectory": "web/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+The rewrite is necessary — without it, refreshing on `/learn` or `/report`
+returns a 404, because those routes only exist client-side.
+
+**Vercel deploys the frontend only.** The Express API is a long-running server,
+not serverless functions, so it needs separate hosting (Railway, Render, Fly).
+After deploying the API:
+
+1. Set `VITE_API_BASE_URL` in the Vercel project to the API's absolute URL
+2. Add the Vercel domain to `CORS_ORIGINS` on the API
+
+Without those two steps the deployed frontend builds correctly but cannot load
+data.
+
+---
+
+## Limitations and future improvements
+
+- **No automated tests.** Described above. The most significant gap.
+- **No authentication.** Anyone can post or delete a report. Real crowdsourcing
+  needs accounts, rate limiting and moderation.
+- **Images are base64 in a `TEXT` column.** Acceptable for downscaled ~100 KB
+  photographs, and they are served from a separate endpoint so they never bloat
+  the list payload. Production belongs in object storage with signed URLs.
+- **`POST /api/admin/ingest` is unauthenticated.** It exists so the pipeline can
+  be re-run during review. It needs auth, or better, replacing with a scheduled
+  job — a long-running import behind an open endpoint can overload both
+  services.
+- **TLS chain verification is disabled** for hosted Postgres. The connection is
+  encrypted but the certificate chain is not verified, because Supabase's CA is
+  not in Node's trust store. The fix is to ship that CA and pass it as `ca`.
+- **Marker positions are approximate by construction.** The source data is
+  city-level and the UI says so.
+- **The dataset's seasonality is flat.** Sightings are spread fairly evenly
+  across the calendar, so the seasonal chart does not show the spring peak UK
+  tick activity really has. That is a property of the supplied data, not the
+  chart, and worth knowing before drawing conclusions from it.
+
+---
+
+## Demonstration
+
+Walkthrough video: _to be added before submission._
+
+---
+
+## Notes on content
+
+The species descriptions stay at the level the sources support — genus-level
+ecology and morphology — rather than inventing species-level detail. Where a
+claim would need a clinical source I do not have, the entry says so. Worth
+noting that *Ixodes ricinus*, the tick most often found on UK pets and people,
+does not appear in this dataset at all.
+
+Prevention content reflects standard published UK public-health and veterinary
+guidance. It is general education, and the app pairs it with a visible
+statement that it is not veterinary or medical advice.
+
+---
 
 ## Licence
 
