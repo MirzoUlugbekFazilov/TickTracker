@@ -110,6 +110,11 @@ cluster the migration is a harmless no-op.
 `npm run db:status` reports RLS state per table and flags anything unprotected
 when the target is Supabase.
 
+See **[DATABASE.md](DATABASE.md)** for a full walkthrough of the schema, how
+severity is calculated, why marker positions are offset, and why the Supabase
+dashboard shows "No migrations" (it reads the Supabase CLI's bookkeeping table,
+not ours).
+
 ### Resetting
 
 ```bash
