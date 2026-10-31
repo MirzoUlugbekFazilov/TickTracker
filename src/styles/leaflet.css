@@ -1,0 +1,273 @@
+/* ==========================================================================
+   Leaflet overrides
+
+   Leaflet ships opinionated light-mode styling and its own z-index stack. These
+   rules bring its chrome into the app's design system and, importantly, make it
+   usable in dark mode — which Leaflet has no concept of.
+   ========================================================================== */
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-sunken);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  /* Leaflet's default is a hand cursor on the whole canvas; grab reads better
+     for a pannable surface. */
+  cursor: grab;
+}
+
+.leaflet-container:active {
+  cursor: grabbing;
+}
+
+/* Leaflet draws its own focus outline inconsistently across panes. Replacing it
+   with the app's ring means a keyboard user tabbing through markers always sees
+   the same indicator they see everywhere else. */
+.leaflet-container :focus-visible,
+.leaflet-interactive:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Dark mode tiles
+
+   OpenStreetMap only publishes a light raster style. Rather than add a second
+   tile provider (another dependency, another attribution, another API key), the
+   light tiles are filtered to a dark equivalent.
+
+   `grayscale` comes FIRST and matters. Inverting OSM's colours directly turns
+   its green landcover and beige roads into a murky green-on-navy that fights
+   the orange severity markers for attention — the basemap ends up competing
+   with the data it is supposed to sit behind. Desaturating before inverting
+   gives a neutral charcoal basemap instead, which is what a purpose-built dark
+   map style looks like, and leaves hue free to mean something.
+
+   The trade-off is stated honestly on the About page: this is a filtered light
+   basemap, not a designed dark one, so place labels sit a little lower in
+   contrast than in light mode. Markers are unaffected — they live in an overlay
+   pane, above the filtered tile pane.
+   -------------------------------------------------------------------------- */
+:root[data-theme='dark'] .leaflet-tile-pane {
+  filter: grayscale(1) invert(1) brightness(0.82) contrast(0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .leaflet-tile-pane {
+    filter: grayscale(1) invert(1) brightness(0.82) contrast(0.95);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Zoom and attribution controls
+   -------------------------------------------------------------------------- */
+.leaflet-bar {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  /* 34px is Leaflet's default and is below the 44px target guidance, but these
+     are duplicated by scroll/pinch zoom and by keyboard +/- so they are not the
+     only route to the action. Bumped to 40px as a compromise that keeps the
+     control compact enough not to cover the map. */
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom-color: var(--border-subtle);
+  font-size: 1.25rem;
+}
+
+.leaflet-bar a:hover {
+  background: var(--surface-hover);
+  color: var(--brand-ink);
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm) 0 0 0;
+}
+
+.leaflet-control-attribution a {
+  color: var(--brand-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Markers
+
+   Markers are divIcons rather than Leaflet's default image pin: a div can be
+   sized and coloured from CSS custom properties, which is what lets severity
+   drive both the fill and the diameter without shipping 8 PNGs.
+   -------------------------------------------------------------------------- */
+.tick-marker {
+  /* Leaflet positions the icon's top-left corner; this re-centres the dot on
+     the actual coordinate. */
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--marker-fill, var(--severity-moderate));
+  /* Double ring: a surface-coloured halo separates the marker from the tiles,
+     and a dark hairline outside it guarantees an edge on a pale basemap. */
+  box-shadow: 0 0 0 2px var(--marker-ring), 0 0 0 3px rgb(15 27 45 / 0.35);
+  transition: transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.tick-marker:hover {
+  /* A transform on an absolutely positioned map overlay cannot shift any
+     sibling's layout, so a small lift is safe here. */
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px var(--marker-ring), 0 0 0 4px var(--brand);
+  z-index: 1;
+}
+
+.tick-marker--selected {
+  box-shadow: 0 0 0 2px var(--marker-ring), 0 0 0 4px var(--brand),
+    0 0 0 7px color-mix(in srgb, var(--brand) 35%, transparent);
+  z-index: 2;
+}
+
+/* Recent activity gets a second, non-colour channel: a ring that pulses once
+   on appearance. Purely additive — recency is also stated in the popup and the
+   detail panel, so nothing depends on seeing the animation. */
+.tick-marker--recent::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--marker-fill, var(--severity-moderate));
+  opacity: 0.55;
+  animation: marker-pulse 2.4s var(--ease-in-out) infinite;
+}
+
+@keyframes marker-pulse {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.12;
+  }
+}
+
+/* Locally reported sightings are marked with a notch so they are
+   distinguishable from API data at a glance, not only by colour. */
+.tick-marker--local {
+  border-radius: 4px; /* a square marker, clearly not one of the circles */
+}
+
+/* --------------------------------------------------------------------------
+   Cluster markers
+   -------------------------------------------------------------------------- */
+.cluster-marker {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #ffffff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 3px var(--marker-ring), 0 0 0 4px rgb(15 27 45 / 0.3),
+    var(--shadow-md);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1);
+  background: var(--brand-strong);
+}
+
+.cluster-marker__count {
+  line-height: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Popups
+   -------------------------------------------------------------------------- */
+.leaflet-popup-content-wrapper {
+  background: var(--surface-raised);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 0;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: var(--space-4);
+  width: 240px !important; /* Leaflet sets an inline width; this wins over it */
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.leaflet-popup-tip {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 32px;
+  color: var(--ink-muted);
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.popup__title {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.popup__latin {
+  font-style: italic;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+.popup__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.popup__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}

@@ -1,0 +1,328 @@
+/* ==========================================================================
+   Design tokens
+   ==========================================================================
+
+   Every colour, space, radius and duration in the app resolves to one of these
+   custom properties. Two reasons that is worth the discipline here: the
+   light/dark themes become a single block of overrides rather than a sweep
+   through every component, and the data-visualisation colours stay pinned to
+   the exact values that were validated for colour-vision deficiency, instead of
+   drifting as components get copied around.
+
+   COLOUR PROVENANCE
+   -----------------
+   Chrome colours (surfaces, ink, brand) are chosen for this product: a deep
+   institutional blue that reads as public-health rather than consumer, on a
+   cool off-white.
+
+   Data colours are NOT chosen by eye. They come from a palette checked with a
+   contrast/CVD validator against these exact surfaces:
+
+   * Species categorical (5 slots) — passes the lightness band, chroma floor,
+     adjacent-pair CVD separation (worst ΔE 9.1 light / 8.4 dark, target ≥ 8)
+     and the normal-vision floor (worst ΔE 19.6 light / 19.3 dark, floor ≥ 15)
+     in both modes. Three light-mode slots sit below 3:1 against white, so the
+     species chart always ships a legend, direct value labels and a table view —
+     colour never carries the meaning on its own.
+
+   * Severity (4 steps) — a single-hue, lightness-ordered heat ramp. The obvious
+     choice, a green-to-red traffic light, was measured and rejected: red against
+     green is ΔE 4.1 under deuteranopia, i.e. effectively identical to a large
+     share of male users, and amber against orange fails even the normal-vision
+     floor at 13.6. A one-hue ramp ordered by lightness stays legible under every
+     simulation, because lightness survives colour-vision deficiency. Severity is
+     additionally encoded by marker size and always carries a text label.
+   ========================================================================== */
+
+:root {
+  /* ---- Typography ---------------------------------------------------- */
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /* A fifth-based type scale. 1rem = 16px body minimum on every breakpoint. */
+  --text-2xs: 0.6875rem; /* 11px — only for all-caps micro-labels */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-base: 0.9375rem; /* 15px — dense UI copy */
+  --text-body: 1rem; /* 16px — prose */
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 2.875rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.7;
+
+  /* ---- Spacing: 4px base --------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* ---- Radii ---------------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* ---- Layout --------------------------------------------------------- */
+  --container-max: 1360px;
+  --prose-max: 68ch;
+  --header-height: 60px;
+  --sidebar-width: 336px;
+  --detail-width: 420px;
+
+  /* ---- Motion --------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* ---- Z-index scale --------------------------------------------------
+     Declared once so nothing ever needs a speculative `z-index: 9999`.
+     Leaflet's own panes sit at 200–700, which is why the map chrome starts
+     above 700 rather than at an arbitrary low number. */
+  --z-map-pane: 400;
+  --z-map-chrome: 800;
+  --z-sticky: 900;
+  --z-header: 1000;
+  --z-drawer: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+
+  /* ---- Data: species categorical (validated, do not substitute) -------- */
+  --species-1: #2a78d6;
+  --species-2: #eb6834;
+  --species-3: #1baf7a;
+  --species-4: #eda100;
+  --species-5: #e87ba4;
+
+  /* ---- Data: severity heat ramp (validated, lightness-ordered) --------- */
+  --severity-low: #f0a07a;
+  --severity-moderate: #e5713c;
+  --severity-high: #c84a1e;
+  --severity-severe: #8f2c10;
+  /* Ink that meets 4.5:1 on the matching tint, for severity badge text. */
+  --severity-low-ink: #7a3410;
+  --severity-moderate-ink: #7a3410;
+  --severity-high-ink: #ffffff;
+  --severity-severe-ink: #ffffff;
+  /* Soft background tints for badges, from the same hue. */
+  --severity-low-tint: #fdeee6;
+  --severity-moderate-tint: #fbe3d7;
+  --severity-high-tint: #f7d6c6;
+  --severity-severe-tint: #f2c9b6;
+}
+
+/* ==========================================================================
+   Light theme (default)
+   ========================================================================== */
+:root {
+  color-scheme: light;
+
+  --plane: #eef2f8; /* page background behind cards */
+  --surface: #ffffff; /* card / panel surface */
+  --surface-raised: #ffffff;
+  --surface-sunken: #f6f8fc; /* inset wells, table stripes */
+  --surface-hover: #f1f5fb;
+  --surface-active: #e6edf8;
+
+  --ink: #0f1b2d; /* primary text — 15.8:1 on white */
+  --ink-secondary: #44536b; /* secondary text — 7.9:1 on white */
+  --ink-muted: #5d6b82; /* axis labels, captions — 5.4:1 on white */
+  --ink-inverse: #ffffff;
+
+  --border: #d4ddeb;
+  --border-strong: #b3c1d6;
+  --border-subtle: #e4eaf3;
+
+  --brand: #11487f; /* deep institutional blue — 8.4:1 on white */
+  --brand-strong: #0c355f;
+  --brand-soft: #e7eff9;
+  --brand-ink: #0d3a68; /* brand colour as text on light surfaces */
+
+  --accent: #b45309; /* amber, darkened to 4.9:1 for use as text */
+  --accent-soft: #fdf2e3;
+  --accent-bright: #f59e0b; /* decorative fills only, never text */
+
+  --success: #116b35;
+  --success-soft: #e4f5ea;
+  --warning-ink: #7a4b07;
+  --warning-soft: #fdf3dc;
+  --danger: #a4232a;
+  --danger-soft: #fdeaea;
+
+  --focus-ring: #1d6fe0;
+
+  --shadow-sm: 0 1px 2px rgb(15 27 45 / 0.06), 0 1px 3px rgb(15 27 45 / 0.08);
+  --shadow-md: 0 2px 4px rgb(15 27 45 / 0.05), 0 6px 16px rgb(15 27 45 / 0.09);
+  --shadow-lg: 0 4px 8px rgb(15 27 45 / 0.05), 0 16px 40px rgb(15 27 45 / 0.14);
+
+  /* Chart chrome */
+  --grid-line: #e4eaf3;
+  --axis-line: #b3c1d6;
+  /* Ring drawn around map markers so a light fill never floats on the tiles. */
+  --marker-ring: #ffffff;
+  --marker-ring-strong: #0f1b2d;
+}
+
+/* ==========================================================================
+   Dark theme
+
+   Selected, not inverted. The data colours are the same hues re-stepped for the
+   dark surface and re-validated against it — an automatic flip would have
+   dropped several below the 3:1 contrast floor.
+
+   Declared under both the media query and the explicit attribute so the OS
+   setting works out of the box and the in-app toggle can still override it in
+   both directions.
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --plane: #0a111e;
+    --surface: #121a2b;
+    --surface-raised: #182238;
+    --surface-sunken: #0e1626;
+    --surface-hover: #1d2840;
+    --surface-active: #243151;
+
+    --ink: #f2f6fc;
+    --ink-secondary: #b3c0d4;
+    --ink-muted: #8b9ab2;
+    --ink-inverse: #0a111e;
+
+    --border: #2a3754;
+    --border-strong: #3d4d70;
+    --border-subtle: #1e2940;
+
+    --brand: #6ba6f0;
+    --brand-strong: #96c1f7;
+    --brand-soft: #16263f;
+    --brand-ink: #9cc5f8;
+
+    --accent: #f0a93c;
+    --accent-soft: #2a1f0d;
+    --accent-bright: #f59e0b;
+
+    --success: #4ec97d;
+    --success-soft: #0f2a1a;
+    --warning-ink: #f0c05a;
+    --warning-soft: #2b2310;
+    --danger: #f08b8b;
+    --danger-soft: #2d1416;
+
+    --focus-ring: #7ab4ff;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 6px 16px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.6);
+
+    --grid-line: #1e2940;
+    --axis-line: #3d4d70;
+    --marker-ring: #121a2b;
+    --marker-ring-strong: #f2f6fc;
+
+    --species-1: #3987e5;
+    --species-2: #d95926;
+    --species-3: #199e70;
+    --species-4: #c98500;
+    --species-5: #d55181;
+
+    --severity-low: #f6c4ac;
+    --severity-moderate: #ef9068;
+    --severity-high: #e0663a;
+    --severity-severe: #c2441c;
+    --severity-low-ink: #f6c4ac;
+    --severity-moderate-ink: #f8d5c2;
+    --severity-high-ink: #1a0a04;
+    --severity-severe-ink: #ffffff;
+    --severity-low-tint: #33200f;
+    --severity-moderate-tint: #3b2213;
+    --severity-high-tint: #432215;
+    --severity-severe-tint: #491d10;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --plane: #0a111e;
+  --surface: #121a2b;
+  --surface-raised: #182238;
+  --surface-sunken: #0e1626;
+  --surface-hover: #1d2840;
+  --surface-active: #243151;
+
+  --ink: #f2f6fc;
+  --ink-secondary: #b3c0d4;
+  --ink-muted: #8b9ab2;
+  --ink-inverse: #0a111e;
+
+  --border: #2a3754;
+  --border-strong: #3d4d70;
+  --border-subtle: #1e2940;
+
+  --brand: #6ba6f0;
+  --brand-strong: #96c1f7;
+  --brand-soft: #16263f;
+  --brand-ink: #9cc5f8;
+
+  --accent: #f0a93c;
+  --accent-soft: #2a1f0d;
+  --accent-bright: #f59e0b;
+
+  --success: #4ec97d;
+  --success-soft: #0f2a1a;
+  --warning-ink: #f0c05a;
+  --warning-soft: #2b2310;
+  --danger: #f08b8b;
+  --danger-soft: #2d1416;
+
+  --focus-ring: #7ab4ff;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 6px 16px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.6);
+
+  --grid-line: #1e2940;
+  --axis-line: #3d4d70;
+  --marker-ring: #121a2b;
+  --marker-ring-strong: #f2f6fc;
+
+  --species-1: #3987e5;
+  --species-2: #d95926;
+  --species-3: #199e70;
+  --species-4: #c98500;
+  --species-5: #d55181;
+
+  --severity-low: #f6c4ac;
+  --severity-moderate: #ef9068;
+  --severity-high: #e0663a;
+  --severity-severe: #c2441c;
+  /* Low and moderate badges sit on a DARK tint in this theme, so their ink has
+     to invert too. Carrying the light theme's dark-brown ink across measured
+     1.14:1 — illegible. These are 9.9:1 and 10.7:1 on their tints. */
+  --severity-low-ink: #f6c4ac;
+  --severity-moderate-ink: #f8d5c2;
+  --severity-high-ink: #1a0a04;
+  --severity-severe-ink: #ffffff;
+  --severity-low-tint: #33200f;
+  --severity-moderate-tint: #3b2213;
+  --severity-high-tint: #432215;
+  --severity-severe-tint: #491d10;
+}
