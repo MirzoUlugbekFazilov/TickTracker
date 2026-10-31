@@ -137,28 +137,30 @@ export function FilterPanel({
         </button>
       ) : null}
 
+      {/* The count lives inside the sticky bar rather than below it. It is the
+          figure that tells you whether a filter did what you wanted, so it has
+          to stay on screen while you are deep in the species list — which is
+          exactly when it used to have scrolled away. */}
       <div className="filters__head">
-        <h2 className="filters__title">
-          Filters
-          {activeCount > 0 ? (
-            <span className="badge badge--brand" style={{ marginInlineStart: 8 }}>
-              {activeCount} active
-            </span>
-          ) : null}
-        </h2>
+        <div className="filters__heading-group">
+          <h2 className="filters__title">
+            Filters
+            {activeCount > 0 ? (
+              <span className="badge badge--brand">{activeCount} active</span>
+            ) : null}
+          </h2>
+          <p className="filters__count">
+            <strong className="tabular">{formatNumber(resultCount)}</strong> of{' '}
+            {formatNumber(allSightings.length)} shown
+          </p>
+        </div>
+
         {!isDefault ? (
           <button type="button" className="btn btn--sm btn--ghost" onClick={onReset}>
             Clear all
           </button>
         ) : null}
       </div>
-
-      <p className="text-sm text-muted" style={{ marginTop: 'calc(var(--space-4) * -1)' }}>
-        <strong className="tabular" style={{ color: 'var(--ink)' }}>
-          {formatNumber(resultCount)}
-        </strong>{' '}
-        of {formatNumber(allSightings.length)} sightings shown
-      </p>
 
       {/* ---------------------------------------------------- Date range */}
       <fieldset className="filter-group">

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Icon } from '../ui/Icon';
 import { useTheme, type ThemePreference } from '../../hooks/useTheme';
@@ -15,11 +16,37 @@ const THEME_LABEL: Record<ThemePreference, string> = {
   system: 'Following system theme',
 };
 
+/**
+ * True once the page has scrolled at all.
+ *
+ * Drives the header's separator: flush and borderless at the top, a hairline
+ * plus a soft shadow once content passes underneath. It is a small thing, but
+ * it is what stops a translucent header from looking like it is floating
+ * detached above the page when there is nothing to float above.
+ *
+ * `passive: true` matters — a non-passive scroll listener blocks the browser
+ * from starting the scroll until the handler returns, which is a measurable
+ * jank source on touch.
+ */
+function useScrolled(threshold = 4): boolean {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > threshold);
+    onScroll(); // Correct on mount, e.g. after a refresh part-way down a page.
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [threshold]);
+
+  return scrolled;
+}
+
 export function AppHeader() {
   const { preference, resolved, cycle } = useTheme();
+  const scrolled = useScrolled();
 
   return (
-    <header className="header">
+    <header className="header" data-scrolled={scrolled}>
       <div className="header__inner">
         {/* The brand links home. `end` keeps the Map nav item from also matching
             every nested route. */}

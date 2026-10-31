@@ -1,19 +1,26 @@
 /**
  * Headline numbers for the filtered set, shown above the filters.
  *
- * Placed in the sidebar rather than in a strip across the top of the page: the
- * map needs every pixel of height it can get, and the sidebar is already a
- * scrollable column. The tiles update with the filters, so they double as
- * feedback on what the current selection actually contains.
+ * LAYOUT RATIONALE
+ * ----------------
+ * This was a 2x2 grid of equal tiles. Two problems with that, both visible as
+ * soon as it held real data: in a 336px sidebar the tiles were ~150px wide, so
+ * "Nottingham" clipped and "Passerine tick" wrapped to three lines; and four
+ * unrelated figures at identical visual weight meant none of them led.
  *
- * The trend tile compares the most recent window in the data against the one
- * before it, and is omitted entirely when there is too little history to make
- * that comparison meaningful — see `computeTrend`.
+ * The fix is hierarchy. One hero metric — the count, which is the number that
+ * responds to every filter and therefore the one people watch — then three
+ * supporting facts as key/value rows. Scanning a right-aligned value column is
+ * faster than hunting figures inside boxes, and long names finally have room.
+ *
+ * The count animates between values (see AnimatedNumber) because it is the
+ * primary feedback that a filter did something.
  */
 
 import { useMemo } from 'react';
 import type { Sighting } from '../../types/sighting';
-import { Stat } from '../ui/primitives';
+import { Icon } from '../ui/Icon';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { cityCounts, computeTrend, peakMonth, speciesCounts } from '../../lib/stats';
 import { MONTH_NAMES } from '../../lib/severity';
 import { RECENT_WINDOW_DAYS } from '../../lib/normalise';
@@ -35,52 +42,81 @@ export function DatasetSummary({
     return { topCity, topSpecies, peak, trend, recent };
   }, [sightings, latestTimestamp]);
 
+  const { trend } = summary;
+
   return (
-    <div style={{ padding: 'var(--space-4) var(--space-4) 0' }}>
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <Stat
-          label="Sightings shown"
-          value={formatNumber(sightings.length)}
-          {...(summary.trend
-            ? {
-                delta: {
-                  direction: summary.trend.direction,
-                  text:
-                    summary.trend.direction === 'flat'
-                      ? 'level'
-                      : `${Math.abs(summary.trend.changePercent)}%`,
-                },
-                meta: `Last ${RECENT_WINDOW_DAYS} days of data vs the ${RECENT_WINDOW_DAYS} before`,
-              }
-            : { meta: `${formatNumber(summary.recent)} in the most recent ${RECENT_WINDOW_DAYS} days` })}
-        />
+    <section className="summary animate-fade" aria-label="Summary of the current selection">
+      <div className="summary__hero">
+        <span className="summary__label">Sightings shown</span>
 
-        <Stat
-          label="Busiest location"
-          value={summary.topCity?.city ?? '—'}
-          meta={
-            summary.topCity
-              ? `${formatNumber(summary.topCity.count)} sightings`
-              : 'No sightings in the current selection'
-          }
-        />
+        <p className="summary__figure">
+          <AnimatedNumber value={sightings.length} className="summary__value" />
 
-        <Stat
-          label="Commonest species"
-          value={summary.topSpecies?.species ?? '—'}
-          meta={
-            summary.topSpecies
-              ? `${formatNumber(summary.topSpecies.count)} sightings`
-              : undefined
-          }
-        />
+          {trend ? (
+            <span className={`stat__delta stat__delta--${trend.direction}`}>
+              {/* An arrow glyph as well as the colour, so direction survives
+                  in greyscale and for a colourblind reader. */}
+              <Icon
+                name={
+                  trend.direction === 'up'
+                    ? 'arrow-up'
+                    : trend.direction === 'down'
+                      ? 'arrow-down'
+                      : 'minus'
+                }
+                size={13}
+              />
+              {trend.direction === 'flat'
+                ? 'level'
+                : `${Math.abs(trend.changePercent)}%`}
+            </span>
+          ) : null}
+        </p>
 
-        <Stat
-          label="Peak month"
-          value={summary.peak ? (MONTH_NAMES[summary.peak.monthIndex] ?? '—') : '—'}
-          meta={summary.peak ? `${formatNumber(summary.peak.count)} sightings` : undefined}
-        />
+        <span className="summary__meta">
+          {trend
+            ? `Last ${RECENT_WINDOW_DAYS} days of data against the ${RECENT_WINDOW_DAYS} before`
+            : `${formatNumber(summary.recent)} in the most recent ${RECENT_WINDOW_DAYS} days of data`}
+        </span>
       </div>
-    </div>
+
+      <dl className="summary__rows">
+        <div className="summary__row">
+          <dt className="summary__row-label">Busiest location</dt>
+          <dd className="summary__row-value">
+            {summary.topCity?.city ?? '—'}
+            {summary.topCity ? (
+              <span className="summary__row-sub">
+                {formatNumber(summary.topCity.count)} sightings
+              </span>
+            ) : null}
+          </dd>
+        </div>
+
+        <div className="summary__row">
+          <dt className="summary__row-label">Commonest species</dt>
+          <dd className="summary__row-value">
+            {summary.topSpecies?.species ?? '—'}
+            {summary.topSpecies ? (
+              <span className="summary__row-sub">
+                {formatNumber(summary.topSpecies.count)} sightings
+              </span>
+            ) : null}
+          </dd>
+        </div>
+
+        <div className="summary__row">
+          <dt className="summary__row-label">Peak month</dt>
+          <dd className="summary__row-value">
+            {summary.peak ? (MONTH_NAMES[summary.peak.monthIndex] ?? '—') : '—'}
+            {summary.peak ? (
+              <span className="summary__row-sub">
+                {formatNumber(summary.peak.count)} sightings
+              </span>
+            ) : null}
+          </dd>
+        </div>
+      </dl>
+    </section>
   );
 }

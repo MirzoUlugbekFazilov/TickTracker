@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Motion layer
+   ==========================================================================
+
+   Micro-interaction, written by hand rather than pulled from a motion library.
+   Framer Motion is ~34 KB gzipped and the work here is entrance transitions,
+   press feedback and a shimmer — all of which CSS does natively and more
+   cheaply than a React re-render per frame.
+
+   THE RULES THIS FILE FOLLOWS
+
+   1. Motion must mean something. Every animation here either shows where an
+      element came from (entrances), confirms an input was received (press),
+      or indicates that content is pending (shimmer). Nothing moves for
+      decoration.
+
+   2. Only `transform` and `opacity` are animated. Those two are the only
+      properties a browser can composite off the main thread; animating
+      `width`, `height`, `top` or `box-shadow` forces layout or paint on every
+      frame and is where janky interfaces come from.
+
+   3. Distances are small. A 10px rise reads as "this arrived"; a 40px rise
+      reads as "this is a slideshow". The rule of thumb is that entrance
+      motion should be felt more than seen.
+
+   4. Everything is opt-out. The reduced-motion block at the bottom is not an
+      afterthought — vestibular disorders make large motion genuinely
+      unpleasant, and `prefers-reduced-motion` is how people tell us so.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Keyframes
+   -------------------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in-soft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-from-end {
+  from {
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-from-bottom {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Entrance utilities
+
+   `.animate-rise` on a container staggers its direct children. The delay is
+   driven by an `--i` custom property the component sets per child, which keeps
+   the stagger in CSS instead of spawning a timer per element in React.
+   -------------------------------------------------------------------------- */
+
+.animate-rise {
+  animation: rise-in var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-fade {
+  animation: fade-in-soft var(--duration-base) var(--ease-out) both;
+}
+
+.animate-scale {
+  animation: scale-in var(--duration-base) var(--ease-spring) both;
+}
+
+/* Staggered children. Capped at 10 steps: beyond about 400ms of accumulated
+   delay the last item feels broken rather than choreographed, so later
+   children simply share the final delay. */
+.stagger > * {
+  animation: rise-in var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.stagger-fast > * {
+  animation: rise-in var(--duration-base) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* --------------------------------------------------------------------------
+   Press feedback
+
+   A 1px settle on :active. Small enough that it never reads as a bounce, large
+   enough that a click feels mechanically acknowledged — which matters most on
+   touch, where there is no hover state to confirm the target was hit.
+   -------------------------------------------------------------------------- */
+
+.press {
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.press:active:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+/* --------------------------------------------------------------------------
+   Interactive surface
+
+   The hover treatment shared by cards and list rows. Border and background
+   shift; the element does NOT scale. A scale transform on a card in a grid
+   makes its neighbours appear to flinch and, at the edges, causes overflow —
+   which is why a hover state that moves layout is one of the commonest ways a
+   competent-looking interface starts to feel cheap.
+   -------------------------------------------------------------------------- */
+
+.interactive {
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+
+   Entrances collapse to a plain fade rather than vanishing entirely: the
+   element still needs to appear, it just must not travel. Transforms are
+   neutralised so nothing is left mid-animation.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-scale,
+  .stagger > *,
+  .stagger-fast > * {
+    animation: fade-in-soft 1ms linear both;
+    animation-delay: 0ms !important;
+    transform: none !important;
+  }
+
+  .press:active {
+    transform: none;
+  }
+}

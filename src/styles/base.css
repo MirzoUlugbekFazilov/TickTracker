@@ -70,6 +70,10 @@ button:disabled,
 p,
 li {
   overflow-wrap: break-word;
+  /* Lets the browser avoid short last lines and bad rags. Unlike `balance`,
+     which is capped at a few lines and is for headings, `pretty` is designed
+     for body copy and degrades to normal wrapping where unsupported. */
+  text-wrap: pretty;
 }
 
 h1,
@@ -81,9 +85,22 @@ h6 {
   font-family: var(--font-display);
   font-weight: 700;
   line-height: var(--leading-tight);
-  letter-spacing: -0.012em;
+  letter-spacing: -0.018em;
   text-wrap: balance;
   color: var(--ink);
+}
+
+/* Optical sizing by hand: tracking tightens as type grows.
+   A letter-spacing value that looks right at 18px looks conspicuously loose at
+   46px, because the perceived gap between letters scales with the glyphs. This
+   is the single cheapest change that makes headings look typeset rather than
+   merely large. */
+h1 {
+  letter-spacing: -0.032em;
+}
+
+h2 {
+  letter-spacing: -0.024em;
 }
 
 a {

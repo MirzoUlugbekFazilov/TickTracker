@@ -70,11 +70,18 @@
   --space-16: 4rem;
   --space-20: 5rem;
 
-  /* ---- Radii ---------------------------------------------------------- */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* ---- Radii ----------------------------------------------------------
+     Derived from one base rather than five independent numbers. Changing
+     `--radius` reshapes the whole product coherently, and nested corners stay
+     visually concentric because each step differs by a fixed amount rather
+     than an arbitrary one. (The convention shadcn/ui popularised, and it is
+     popular because it is right.) */
+  --radius: 10px;
+  --radius-sm: calc(var(--radius) - 6px); /* 4px  — swatches, inline chips */
+  --radius-md: calc(var(--radius) - 2px); /* 8px  — inputs, buttons */
+  --radius-lg: var(--radius); /* 10px — cards */
+  --radius-xl: calc(var(--radius) + 6px); /* 16px — panels, sheets */
+  --radius-2xl: calc(var(--radius) + 14px); /* 24px — hero */
   --radius-pill: 999px;
 
   /* ---- Layout --------------------------------------------------------- */
@@ -84,12 +91,34 @@
   --sidebar-width: 336px;
   --detail-width: 420px;
 
-  /* ---- Motion --------------------------------------------------------- */
+  /* ---- Motion ----------------------------------------------------------
+     Four easings, each with a job, rather than `ease` everywhere.
+
+     `--ease-out` is the workhorse: fast departure, soft arrival, which is how
+     a thing entering the screen should feel. `--ease-spring` overshoots very
+     slightly (the 1.02 control point) and is reserved for elements that
+     should feel physical when they appear — panels, sheets, toasts. Anything
+     leaving uses `--ease-in`, because exits should accelerate away rather
+     than linger.
+
+     Durations are short on purpose. Interface motion over ~350ms stops
+     reading as responsiveness and starts reading as waiting. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --duration-fast: 120ms;
-  --duration-base: 200ms;
-  --duration-slow: 320ms;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 80ms; /* press feedback */
+  --duration-fast: 140ms; /* hover, colour change */
+  --duration-base: 220ms; /* most transitions */
+  --duration-slow: 340ms; /* panels, sheets */
+  --duration-slower: 520ms; /* staggered entrances */
+
+  /* ---- Elevation geometry ----------------------------------------------
+     Shadow *colour* is themed below; the blur/offset geometry is shared, so
+     light and dark stay the same physical shape and only the light source
+     changes intensity. */
+  --shadow-color: 215 35% 12%;
 
   /* ---- Z-index scale --------------------------------------------------
      Declared once so nothing ever needs a speculative `z-index: 9999`.
@@ -167,9 +196,27 @@
 
   --focus-ring: #1d6fe0;
 
-  --shadow-sm: 0 1px 2px rgb(15 27 45 / 0.06), 0 1px 3px rgb(15 27 45 / 0.08);
-  --shadow-md: 0 2px 4px rgb(15 27 45 / 0.05), 0 6px 16px rgb(15 27 45 / 0.09);
-  --shadow-lg: 0 4px 8px rgb(15 27 45 / 0.05), 0 16px 40px rgb(15 27 45 / 0.14);
+  /* Elevation.
+     Three layers each: a hairline contact shadow, a short ambient shadow and
+     a long soft one. The three-layer build is what separates a surface that
+     looks lifted from one with a grey smear under it — a single blur cannot
+     describe both contact and distance. Tinted with the brand hue rather than
+     neutral black, so shadows sit in the same colour world as the UI. */
+  --shadow-xs: 0 1px 2px hsl(var(--shadow-color) / 0.07);
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 2px 4px hsl(var(--shadow-color) / 0.05);
+  --shadow-md: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 4px 8px hsl(var(--shadow-color) / 0.06),
+    0 10px 20px hsl(var(--shadow-color) / 0.06);
+  --shadow-lg: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 8px 16px hsl(var(--shadow-color) / 0.07),
+    0 20px 40px hsl(var(--shadow-color) / 0.1);
+  --shadow-xl: 0 2px 4px hsl(var(--shadow-color) / 0.06),
+    0 12px 24px hsl(var(--shadow-color) / 0.09), 0 32px 64px hsl(var(--shadow-color) / 0.14);
+
+  /* Glass, for chrome floating over the live map only. Backdrop blur is a
+     real GPU cost and reads as decoration anywhere it is not separating a
+     control from moving content underneath it. */
+  --glass-bg: rgb(255 255 255 / 0.82);
+  --glass-border: rgb(255 255 255 / 0.9);
+  --glass-blur: saturate(180%) blur(16px);
 
   /* Chart chrome */
   --grid-line: #e4eaf3;
@@ -228,9 +275,21 @@
 
     --focus-ring: #7ab4ff;
 
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 6px 16px rgb(0 0 0 / 0.45);
-    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.6);
+    /* Dark elevation leans on deeper, wider shadows: on a dark plane a
+       shadow cannot brighten, so separation has to come from depth plus the
+       surface step itself. */
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 8px rgb(0 0 0 / 0.45),
+      0 10px 20px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 16px rgb(0 0 0 / 0.5),
+      0 20px 40px rgb(0 0 0 / 0.6);
+    --shadow-xl: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px rgb(0 0 0 / 0.55),
+      0 32px 64px rgb(0 0 0 / 0.7);
+
+    --glass-bg: rgb(18 26 43 / 0.78);
+    --glass-border: rgb(255 255 255 / 0.1);
+    --glass-blur: saturate(160%) blur(16px);
 
     --grid-line: #1e2940;
     --axis-line: #3d4d70;
@@ -295,9 +354,18 @@
 
   --focus-ring: #7ab4ff;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 6px 16px rgb(0 0 0 / 0.45);
-  --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.6);
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 8px rgb(0 0 0 / 0.45),
+    0 10px 20px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 16px rgb(0 0 0 / 0.5),
+    0 20px 40px rgb(0 0 0 / 0.6);
+  --shadow-xl: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px rgb(0 0 0 / 0.55),
+    0 32px 64px rgb(0 0 0 / 0.7);
+
+  --glass-bg: rgb(18 26 43 / 0.78);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-blur: saturate(160%) blur(16px);
 
   --grid-line: #1e2940;
   --axis-line: #3d4d70;

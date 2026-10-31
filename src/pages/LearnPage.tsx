@@ -17,10 +17,18 @@ import { YearlyTrendChart } from '../components/charts/YearlyTrendChart';
 import { TickIllustration } from '../components/TickIllustration';
 import { Icon } from '../components/ui/Icon';
 import { Alert, Spinner } from '../components/ui/primitives';
+import { SectionNav, type SectionNavItem } from '../components/layout/SectionNav';
 import { SPECIES } from '../data/species';
 import { MEDICAL_DISCLAIMER, PREVENTION_TOPICS } from '../data/prevention';
 import { speciesColor } from '../lib/colors';
 import { slugify } from '../lib/slug';
+
+/** Drives the sticky in-page nav; ids must match the section headings below. */
+const SECTIONS: readonly SectionNavItem[] = [
+  { id: 'activity-heading', label: 'Seasonal activity' },
+  { id: 'species-heading', label: 'Species guide' },
+  { id: 'prevention-heading', label: 'Prevention' },
+];
 
 export function LearnPage() {
   const { state, dataset, error } = useSightings();
@@ -47,6 +55,10 @@ export function LearnPage() {
         </p>
       </header>
 
+      <div className="page-with-nav">
+        <SectionNav items={SECTIONS} />
+
+        <div>
       {/* ===================================================== Charts (3c) */}
       <section className="section" aria-labelledby="activity-heading">
         <h2 className="section-heading" id="activity-heading">
@@ -113,10 +125,11 @@ export function LearnPage() {
           </p>
         </Alert>
 
-        <div className="species-grid" style={{ marginTop: 'var(--space-5)' }}>
-          {SPECIES.map((species) => (
+        <div className="species-grid stagger" style={{ marginTop: 'var(--space-5)' }}>
+          {SPECIES.map((species, index) => (
             <article
               key={species.name}
+              style={{ ['--i' as string]: index }}
               className="species-card"
               id={`species-${slugify(species.name)}`}
               aria-labelledby={`species-${slugify(species.name)}-name`}
@@ -197,10 +210,11 @@ export function LearnPage() {
           {MEDICAL_DISCLAIMER}
         </Alert>
 
-        <div className="two-col" style={{ marginTop: 'var(--space-5)' }}>
-          {PREVENTION_TOPICS.map((topic) => (
+        <div className="two-col stagger" style={{ marginTop: 'var(--space-5)' }}>
+          {PREVENTION_TOPICS.map((topic, index) => (
             <article
               key={topic.id}
+              style={{ ['--i' as string]: index }}
               className="card"
               id={topic.id}
               aria-labelledby={`${topic.id}-title`}
@@ -232,6 +246,9 @@ export function LearnPage() {
           ))}
         </div>
       </section>
+
+        </div>
+      </div>
 
       <section className="section">
         <div className="hero">

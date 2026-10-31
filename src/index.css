@@ -5,6 +5,7 @@
 
 @import './styles/tokens.css';
 @import './styles/base.css';
+@import './styles/motion.css';
 @import 'leaflet/dist/leaflet.css';
 @import './styles/leaflet.css';
 @import './styles/components.css';

@@ -18,12 +18,18 @@ import { FilterPanel } from '../components/filters/FilterPanel';
 import { DatasetSummary } from '../components/filters/DatasetSummary';
 import { SightingsMap } from '../components/map/SightingsMap';
 import { MapLegend } from '../components/map/MapLegend';
+import { MapSkeleton } from '../components/map/MapSkeleton';
 import { SightingDetailPanel } from '../components/detail/SightingDetailPanel';
 import { Icon } from '../components/ui/Icon';
-import { Alert, EmptyState, Spinner } from '../components/ui/primitives';
-import { EMPTY_FILTERS, applyFilters, describeFilters } from '../lib/filters';
+import { Alert, EmptyState } from '../components/ui/primitives';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
+import {
+  EMPTY_FILTERS,
+  activeFilterCount,
+  applyFilters,
+  describeFilters,
+} from '../lib/filters';
 import type { Filters } from '../types/sighting';
-import { formatNumber } from '../lib/format';
 
 export function MapPage() {
   const { state, dataset, error, retry, reports, removeReport } = useSightings();
@@ -45,6 +51,8 @@ export function MapPage() {
     () => applyFilters(dataset.sightings, filters, context),
     [dataset.sightings, filters, context],
   );
+
+  const activeCount = useMemo(() => activeFilterCount(filters), [filters]);
 
   const selectedId = searchParams.get('sighting');
 
@@ -131,12 +139,15 @@ export function MapPage() {
 
   if (state === 'loading') {
     return (
-      <div className="loading-panel">
-        <p className="loading-panel__title">
-          <Spinner label="Loading" /> Loading tick sightings
+      <>
+        <MapSkeleton />
+        {/* The skeleton is aria-hidden scaffolding, so the announcement lives
+            here — one polite message rather than a screen reader walking a
+            dozen placeholder blocks. */}
+        <p className="sr-only" role="status">
+          Loading tick sightings from the Elanco API.
         </p>
-        <p>Fetching 1,000 records from the Elanco API and mapping them to the UK.</p>
-      </div>
+      </>
     );
   }
 
@@ -209,21 +220,28 @@ export function MapPage() {
             >
               <Icon name="filter" size={16} />
               Filters
+              {activeCount > 0 ? (
+                <span className="map-chip__badge">{activeCount}</span>
+              ) : null}
             </button>
 
+            {/* Hidden from assistive tech: the same count is announced, with
+                its filter context, by the live region at the foot of the page.
+                Announcing it twice would be noise. */}
             <p className="map-chip" aria-hidden="true">
               <Icon name="map-pin" size={16} />
-              <span className="map-chip__count">{formatNumber(visible.length)}</span>
-              shown
+              <AnimatedNumber value={visible.length} className="map-chip__count" />
+              <span className="map-chip__label-optional">shown</span>
             </p>
 
             <button
               type="button"
               className="map-chip map-chip--button"
               onClick={() => setResetToken((value) => value + 1)}
+              aria-label="Reset the map to the whole United Kingdom"
             >
               <Icon name="crosshair" size={16} />
-              Reset view
+              <span className="map-chip__label-optional">Reset view</span>
             </button>
           </div>
         </div>
