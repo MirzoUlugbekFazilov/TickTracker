@@ -497,40 +497,54 @@ I would not call that coverage. The data layer is written as pure functions in
 handlers via supertest against a test database is where I would start. Type
 checking and linting do run clean across both packages.
 
-**Deployment.** Both halves deploy to Vercel as **two projects from the same
-repository**, using Vercel's per-directory import.
+**Deployment.** Live on Vercel as two projects from this one repository:
+
+| | URL |
+|---|---|
+| **App** | **https://elanco-project-nine.vercel.app** |
+| **API** | **https://elanco-api.vercel.app** |
+
+Check the API is healthy: <https://elanco-api.vercel.app/api/health>
 
 | Project | Root Directory | Framework | Config |
 |---|---|---|---|
-| Frontend | `web` | Vite | `web/vercel.json` |
-| API | `server` | Express | `server/vercel.json` |
+| `elanco-project` | `web` | Vite | `web/vercel.json` |
+| `elanco-api` | `server` | Express | `server/vercel.json` |
 
-The Express app runs as a single Vercel Function on Fluid Compute. `src/index.ts`
-exports the app as a default export, which is what Vercel imports.
+The Express app runs as a single Vercel Function on Fluid Compute in `lhr1`,
+close to the `eu-west-3` database. `server/src/app.ts` is the entry point:
+Vercel searches `app.*`, `index.*`, `server.*`, `src/app.*`, `src/index.*`,
+`src/server.*` in that order and the winner must both import `express` and
+default-export the application.
 
-The frontend config adds an SPA rewrite. Without it, refreshing on `/learn` or
+`web/vercel.json` adds an SPA rewrite. Without it, refreshing on `/learn` or
 `/report` returns a 404, because those routes only exist client-side.
 
 The server skips its local startup sequence when `process.env.VERCEL` is set.
-That matters: migrations, the ingest-on-boot check and `app.listen()` are all
-wrong for a function that cold-starts — migrations would run on the first
-request after every scale-up, and ingest would re-fire a 1,000-record import
-from each new instance. Migrations belong in the deploy step, so run
-`npm run migrate` (or `npm run ingest` for a first population) against the
-production database once, from a local machine, before the first deploy.
+Migrations, the ingest-on-boot check and `app.listen()` are all wrong for a
+function that cold-starts — migrations would run on the first request after
+every scale-up, and ingest would re-fire a 1,000-record import from each new
+instance. So run migrations and the initial ingest once from a local machine
+against the production database:
 
-Required environment variables in the Vercel dashboard:
+```bash
+cd server
+# with DATABASE_URL pointing at the production database
+npm run ingest
+npm run db:status   # confirm what landed
+```
+
+Environment variables set in Vercel:
 
 | Project | Variable | Value |
 |---|---|---|
-| API | `DATABASE_URL` | PostgreSQL connection string |
-| API | `INGEST_ON_BOOT` | `false` |
-| API | `CORS_ORIGINS` | the frontend's deployed URL |
-| Frontend | `VITE_API_BASE_URL` | the API's deployed URL + `/api` |
+| `elanco-api` | `DATABASE_URL` | Supabase connection string (encrypted) |
+| `elanco-api` | `INGEST_ON_BOOT` | `false` |
+| `elanco-api` | `CORS_ORIGINS` | the app's URL |
+| `elanco-project` | `VITE_API_BASE_URL` | `https://elanco-api.vercel.app/api` |
 
-The two must be set in that order — the frontend needs the API's URL, and the
-API needs the frontend's origin for CORS, so each is deployed once and then
-updated with the other's domain.
+`VITE_API_BASE_URL` is read at build time, not runtime, so changing it needs a
+fresh build rather than a redeploy of the existing output.
 
 ## Limitations and future improvements
 
@@ -557,6 +571,9 @@ updated with the other's domain.
 ---
 
 ## Demonstration
+
+Live app: **https://elanco-project-nine.vercel.app**
+API health: <https://elanco-api.vercel.app/api/health>
 
 Walkthrough video: _to be added before submission._
 
