@@ -329,7 +329,7 @@ postgres       -> 1000 rows
 ├── server/                        Node + TypeScript API
 │   ├── src/
 │   │   ├── index.ts               Entry point, startup order, graceful shutdown
-│   │   ├── app.ts                 Express assembly and middleware order
+│   │   ├── createApp.ts           Express assembly and middleware order
 │   │   ├── config.ts              Environment parsing, validated with Zod
 │   │   ├── types.ts               API contract types
 │   │   ├── db/

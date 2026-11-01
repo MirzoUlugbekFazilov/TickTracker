@@ -14,7 +14,7 @@
  *   4. Kick off the first ingest in the background if the dataset is empty.
  */
 
-import { createApp } from './app.js';
+import { createApp } from './createApp.js';
 import { config } from './config.js';
 import { checkConnection, closePool } from './db/pool.js';
 import { migrate } from './db/migrate.js';
