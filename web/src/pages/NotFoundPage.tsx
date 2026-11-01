@@ -10,7 +10,7 @@ export function NotFoundPage() {
         The link may be out of date, or the address mistyped.
       </EmptyState>
       <div className="row" style={{ justifyContent: 'center' }}>
-        <Link to="/" className="btn btn--primary">
+        <Link to="/map" className="btn btn--primary">
           <Icon name="map-pin" size={18} />
           Go to the map
         </Link>

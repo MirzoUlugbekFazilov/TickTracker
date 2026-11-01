@@ -1,22 +1,26 @@
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect, useRef } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { AppFooter } from './components/layout/AppFooter';
 import { SightingsProvider } from './hooks/SightingsProvider';
 import { Spinner } from './components/ui/primitives';
-import { MapPage } from './pages/MapPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 /**
  * Route-level code splitting.
  *
- * The map is the landing route and is loaded eagerly. Everything else is
- * deferred, which matters because Recharts is by far the heaviest dependency in
- * the app and only the Learn page uses it — bundling it into the initial
- * download would make the map slower to appear for a cost most visitors never
- * benefit from. Splitting these three routes takes the entry chunk from roughly
- * 930 KB to about half that.
+ * Only the landing route is eager. That used to be the map, so Leaflet had to
+ * be in the entry chunk; now the dashboard landed in front of it and the map
+ * moved to "/map", so Leaflet and its tile layer are a cost the first screen
+ * no longer pays — it is deferred with everything else.
+ *
+ * The dashboard still pulls Recharts in eagerly, because its yearly-trend
+ * chart is real content on that page rather than an optional extra.
  */
+const MapPage = lazy(() =>
+  import('./pages/MapPage').then((module) => ({ default: module.MapPage })),
+);
 const LearnPage = lazy(() =>
   import('./pages/LearnPage').then((module) => ({ default: module.LearnPage })),
 );
@@ -37,7 +41,8 @@ const AboutPage = lazy(() =>
  * accessibility failures.
  */
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Tick sightings map',
+  '/': 'UK tick sighting dashboard',
+  '/map': 'Tick sightings map',
   '/learn': 'Identify ticks and prevent bites',
   '/report': 'Report a tick sighting',
   '/about': 'How this was built',
@@ -72,7 +77,29 @@ function RouteAnnouncer() {
  */
 function useHideFooter(): boolean {
   const { pathname } = useLocation();
-  return pathname === '/';
+  // Only the map owns the full viewport and scrolls internally, so it is the
+  // one route where a footer would be unreachable.
+  return pathname === '/map';
+}
+
+/**
+ * "/" shows the dashboard — unless it carries a `?sighting=` parameter.
+ *
+ * The map used to live at "/", and the Share action produced links shaped
+ * "/?sighting=<id>". Those URLs are already out in the world: in someone's
+ * messages, in a browser history, possibly in a submission. Moving the map to
+ * "/map" without handling them would land the visitor on the dashboard with
+ * the parameter silently dropped — the link would appear to work while doing
+ * nothing, which is worse than a 404.
+ *
+ * So the parameter is treated as the routing signal it is, and the whole query
+ * string is carried across. `replace` keeps the dead URL out of history, so
+ * Back does not bounce between the two.
+ */
+function HomeRoute() {
+  const { search } = useLocation();
+  const hasSighting = new URLSearchParams(search).has('sighting');
+  return hasSighting ? <Navigate to={`/map${search}`} replace /> : <DashboardPage />;
 }
 
 export default function App() {
@@ -108,7 +135,8 @@ export default function App() {
             }
           >
             <Routes>
-              <Route path="/" element={<MapPage />} />
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/map" element={<MapPage />} />
               <Route path="/learn" element={<LearnPage />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/about" element={<AboutPage />} />

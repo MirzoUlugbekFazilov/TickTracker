@@ -180,7 +180,10 @@
   place-items: center;
   border-radius: 50%;
   background: var(--brand);
-  color: #ffffff;
+  /* Theme-aware, not hard-coded white: --brand is a deep navy in light mode
+     and a light blue in dark, so fixed white ink fails contrast on the dark
+     theme's lighter fill. Cluster counts have to stay readable at 12px. */
+  color: var(--ink-inverse);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 0 0 3px var(--marker-ring), 0 0 0 4px rgb(15 27 45 / 0.3),

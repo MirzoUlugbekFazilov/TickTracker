@@ -211,7 +211,10 @@ samp {
   z-index: var(--z-toast);
   padding: var(--space-3) var(--space-5);
   background: var(--brand);
-  color: #ffffff;
+  /* Theme-aware; --brand inverts between light and dark, so fixed white ink
+     fails contrast on one of them. This one matters especially: the skip link
+     exists for keyboard users and is useless if it cannot be read. */
+  color: var(--ink-inverse);
   font-weight: 600;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -232,12 +235,14 @@ samp {
   width: 100%;
   max-width: var(--container-max);
   margin-inline: auto;
-  padding-inline: var(--space-5);
+  padding-inline: var(--container-pad);
 }
 
 @media (max-width: 640px) {
   .container {
-    padding-inline: var(--space-4);
+    /* Redeclaring the token rather than the padding, so full-bleed
+       descendants inherit the narrower value and stay in step. */
+    --container-pad: var(--space-4);
   }
 }
 

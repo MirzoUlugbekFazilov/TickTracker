@@ -183,7 +183,7 @@ export function ReportSightingForm({ onSubmit }: ReportSightingFormProps) {
         </Alert>
 
         <div className="form-actions">
-          <button type="button" className="btn btn--primary" onClick={() => navigate('/')}>
+          <button type="button" className="btn btn--primary" onClick={() => navigate('/map')}>
             <Icon name="map-pin" size={18} />
             See it on the map
           </button>

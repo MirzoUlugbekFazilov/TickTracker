@@ -34,7 +34,7 @@ export function ReportPage() {
         </p>
       </header>
 
-      <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)' }}>
+      <div className="two-col two-col--aside">
         <div>
           <div className="card">
             <div className="card__body">
@@ -122,7 +122,7 @@ export function ReportPage() {
                         ) : null}
                         <div className="row" style={{ marginTop: 'var(--space-3)' }}>
                           <Link
-                            to={`/?sighting=${encodeURIComponent(report.id)}`}
+                            to={`/map?sighting=${encodeURIComponent(report.id)}`}
                             className="btn btn--sm btn--secondary"
                           >
                             <Icon name="map-pin" size={15} />

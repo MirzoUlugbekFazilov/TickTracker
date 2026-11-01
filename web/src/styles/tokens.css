@@ -86,6 +86,12 @@
 
   /* ---- Layout --------------------------------------------------------- */
   --container-max: 1360px;
+  /* The container's inline padding, as a token rather than a literal, because
+     full-bleed children have to cancel it with a negative margin of exactly
+     the same size. When the two drifted apart the page overflowed by the
+     difference — 4px of horizontal scroll on mobile. `.container` narrows this
+     below 640px and the bleed follows automatically. */
+  --container-pad: var(--space-5);
   --prose-max: 68ch;
   --header-height: 60px;
   --sidebar-width: 336px;

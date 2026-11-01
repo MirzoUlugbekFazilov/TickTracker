@@ -646,7 +646,7 @@ export function AboutPage() {
 
       <section className="section">
         <div className="row">
-          <Link to="/" className="btn btn--primary btn--lg">
+          <Link to="/map" className="btn btn--primary btn--lg">
             <Icon name="map-pin" size={18} />
             Back to the map
           </Link>

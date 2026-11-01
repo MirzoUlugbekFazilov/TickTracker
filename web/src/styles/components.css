@@ -91,7 +91,7 @@
   height: 32px;
   border-radius: var(--radius-md);
   background: var(--brand);
-  color: #ffffff;
+  color: var(--ink-inverse);
   flex: 0 0 auto;
 }
 
@@ -257,7 +257,13 @@
 .btn--primary {
   background: var(--brand);
   border-color: var(--brand);
-  color: #ffffff;
+  /* NOT hard-coded white.
+     --brand inverts between themes: a deep navy in light mode, a light blue
+     in dark. White ink is correct on the first and measured 2.52:1 on the
+     second — below the 4.5:1 floor, and 1.86:1 once hover lightened it
+     further, which is close to invisible. --ink-inverse flips with the theme,
+     giving 9.3:1 light and 7.5:1 dark. */
+  color: var(--ink-inverse);
 }
 
 .btn--primary:hover {
@@ -513,9 +519,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  /* A whisper of brand tint separates the hero from the rows beneath without
-     needing a second border. */
-  background: linear-gradient(to bottom, var(--brand-soft), transparent);
+  /* A flat border rather than the tinted gradient this used to carry.
+     The gradient was decoration: the border below already separates the hero
+     from the rows, and a wash behind a number makes it fractionally harder to
+     read for no informational gain. */
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .summary__label {
@@ -864,7 +872,7 @@
   height: 18px;
   padding: 0 5px;
   background: var(--brand);
-  color: #ffffff;
+  color: var(--ink-inverse);
   border-radius: var(--radius-pill);
   font-size: var(--text-2xs);
   font-weight: 700;
@@ -1651,8 +1659,13 @@
   /* 340px rather than 300px: these cards carry a four-point appearance list and
      a four-row spec table, and at 300px a 1360px container fits four columns
      that leave every value wrapping over three or four lines. 340px yields
-     three roomier columns and a far better reading measure. */
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+     three roomier columns and a far better reading measure.
+
+     `min(340px, 100%)` rather than a bare 340px: a fixed track minimum is a
+     floor the grid cannot go below, so on a 320px phone the row stayed 340px
+     wide and pushed the whole page sideways. Capping the minimum at the
+     available width lets the single column shrink instead. */
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
   gap: var(--space-5);
 }
 
@@ -2174,9 +2187,26 @@
 
 .two-col {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* See `.species-grid` — the track minimum is capped at the available width
+     so the column can collapse below 320px instead of overflowing. */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--space-5);
   align-items: start;
+}
+
+/* An asymmetric split for a primary column plus a narrower aside — the report
+   form beside its community-reports panel.
+   This lives here rather than in an inline `style` prop because an inline
+   style wins over every media query, which left the report page locked in two
+   columns on a phone: a 150px form next to a 130px panel, both unusable. */
+.two-col--aside {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+@media (max-width: 860px) {
+  .two-col--aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ==========================================================================
@@ -2258,12 +2288,12 @@
 .hero {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    var(--brand-strong) 0%,
-    var(--brand) 55%,
-    color-mix(in srgb, var(--brand) 70%, #1b6ca8) 100%
-  );
+  /* Flat brand surface, not a gradient.
+     This carried a three-stop diagonal gradient and a radial amber glow. Both
+     were decoration, and a saturated wash behind body copy costs contrast for
+     nothing. A solid field reads as more considered and keeps the text the
+     brightest thing in the block. */
+  background: var(--brand-strong);
   color: #ffffff;
   border-radius: var(--radius-2xl);
   padding: var(--space-12) var(--space-8);
@@ -2309,16 +2339,7 @@
   margin-top: var(--space-2);
 }
 
-/* Decorative: a soft radial wash. aria-hidden in the markup. */
-.hero__glow {
-  position: absolute;
-  inset-block-start: -40%;
-  inset-inline-end: -10%;
-  width: 60%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, rgb(245 158 11 / 0.3) 0%, transparent 70%);
-  pointer-events: none;
-}
+
 
 /* ==========================================================================
    Wireframes page
@@ -2475,8 +2496,8 @@
     flex-direction: row;
     align-items: center;
     gap: var(--space-2);
-    margin-inline: calc(var(--space-5) * -1);
-    padding: var(--space-2) var(--space-5);
+    margin-inline: calc(var(--container-pad) * -1);
+    padding: var(--space-2) var(--container-pad);
     background: color-mix(in srgb, var(--plane) 92%, transparent);
     backdrop-filter: var(--glass-blur);
     border-bottom: 1px solid var(--border-subtle);
@@ -2517,4 +2538,354 @@
   html {
     scroll-padding-top: calc(var(--header-height) + 56px);
   }
+}
+
+/* ==========================================================================
+   Dashboard
+   ==========================================================================
+   The landing surface. Hierarchy is the whole point here: one headline figure,
+   then four supporting stats, then two panels of substance, then the long
+   trend. Each tier is quieter than the one above, so the eye lands on the
+   total and works down rather than scanning a uniform grid of equal cards.
+   ========================================================================== */
+
+.dashboard__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: var(--space-10);
+  align-items: center;
+  padding-bottom: var(--space-8);
+  margin-bottom: var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dashboard__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.dashboard__title {
+  font-size: var(--text-3xl);
+  letter-spacing: -0.032em;
+  max-width: 18ch;
+}
+
+@media (min-width: 1000px) {
+  .dashboard__title {
+    font-size: var(--text-4xl);
+  }
+}
+
+.dashboard__lede {
+  color: var(--ink-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
+  max-width: 54ch;
+}
+
+.dashboard__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* The headline figure.
+   A border-led block rather than a filled card: the brief asks for restraint,
+   and at this size the number carries the emphasis on its own. A tinted panel
+   behind it would be decoration competing with the one thing that matters. */
+.dashboard__headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-6);
+  border-inline-start: 3px solid var(--brand);
+}
+
+.dashboard__headline-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-muted);
+}
+
+.dashboard__headline-value {
+  font-family: var(--font-display);
+  /* Fluid, so a six-figure count cannot overflow its column. */
+  font-size: clamp(2.75rem, 2rem + 3.2vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__headline-meta {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: var(--leading-snug);
+  max-width: 38ch;
+}
+
+.dashboard__panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .dashboard__head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .dashboard__headline {
+    /* Below the intro the vertical rule reads as a sidebar that is not there;
+       a horizontal rule above keeps the same separation honestly. */
+    border-inline-start: none;
+    border-top: 3px solid var(--brand);
+    padding-inline-start: 0;
+    padding-top: var(--space-4);
+  }
+
+  .dashboard__panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Panel — the dashboard's content container
+   ==========================================================================
+   Distinct from .card: a panel has a defined head/body split and a sunken
+   header, so a list of rows inside it reads as one object rather than loose
+   content floating on a surface.
+   ========================================================================== */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+
+.panel__title {
+  font-size: var(--text-lg);
+  letter-spacing: -0.02em;
+}
+
+.panel__subtitle {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.panel__subtitle code {
+  font-size: 0.92em;
+  color: var(--ink-secondary);
+}
+
+.panel__body {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  flex: 1 1 auto;
+}
+
+/* ==========================================================================
+   Region bar list
+   ========================================================================== */
+
+.region-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.region-row {
+  display: grid;
+  /* name | bar | count | meta — the bar takes the slack so every count and
+     meta column stays aligned regardless of name length. */
+  grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr) 3.25rem;
+  grid-template-areas:
+    'name bar count'
+    'meta meta meta';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.region-row:last-child {
+  border-bottom: none;
+}
+
+.region-row__name {
+  grid-area: name;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.region-row__track {
+  grid-area: bar;
+  height: 8px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+/* One hue. Length already encodes magnitude; colouring by rank as well would
+   be redundant, and colouring per region would imply a categorical meaning
+   the data does not carry. */
+.region-row__bar {
+  display: block;
+  height: 100%;
+  background: var(--species-1);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.region-row__count {
+  grid-area: count;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: end;
+}
+
+.region-row__meta {
+  grid-area: meta;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+@media (min-width: 560px) {
+  /* Wide enough to put the meta on its own column rather than a second row. */
+  .region-row {
+    grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr) 3.25rem 8.5rem;
+    grid-template-areas: 'name bar count meta';
+  }
+
+  .region-row__meta {
+    text-align: end;
+  }
+}
+
+/* ==========================================================================
+   Recent sightings list
+   ========================================================================== */
+
+.recent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  /* Pulled out so the hover wash spans the panel's full padding, which reads
+     as a row rather than a floating pill. */
+  margin-inline: calc(var(--space-3) * -1);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.recent-row:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+.recent-row__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+}
+
+.recent-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.recent-row__species {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-row__meta {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Skeletons
+   ========================================================================== */
+
+.skeleton-rows,
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.skeleton-rows__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton-list__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.skeleton-list__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+}
+
+.skeleton--dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
 }

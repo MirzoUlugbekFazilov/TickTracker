@@ -4,7 +4,8 @@ import { Icon } from '../ui/Icon';
 import { useTheme, type ThemePreference } from '../../hooks/useTheme';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Map', icon: 'map-pin' as const },
+  { to: '/', label: 'Dashboard', icon: 'chart' as const },
+  { to: '/map', label: 'Map', icon: 'map-pin' as const },
   { to: '/learn', label: 'Learn', icon: 'book' as const },
   { to: '/report', label: 'Report', icon: 'plus-circle' as const },
   { to: '/about', label: 'About', icon: 'info' as const },

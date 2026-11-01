@@ -269,7 +269,6 @@ export function LearnPage() {
 
       <section className="section">
         <div className="hero">
-          <span className="hero__glow" aria-hidden="true" />
           <div className="hero__inner">
             <span className="eyebrow hero__eyebrow">Contribute</span>
             <h2 className="hero__title">Found a tick? Add it to the map.</h2>
@@ -283,7 +282,7 @@ export function LearnPage() {
                 <Icon name="plus-circle" size={18} />
                 Report a sighting
               </Link>
-              <Link to="/" className="btn btn--secondary btn--lg">
+              <Link to="/map" className="btn btn--secondary btn--lg">
                 <Icon name="map-pin" size={18} />
                 Back to the map
               </Link>
