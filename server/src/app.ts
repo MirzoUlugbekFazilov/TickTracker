@@ -77,7 +77,7 @@ export function createApp() {
   // A friendly root so hitting the bare host is not a confusing 404.
   app.get('/', (_req, res) => {
     res.json({
-      name: 'TickTrack UK API',
+      name: 'TickTracker UK API',
       documentation: 'See README.md for the full endpoint reference.',
       endpoints: [
         'GET  /api/health',

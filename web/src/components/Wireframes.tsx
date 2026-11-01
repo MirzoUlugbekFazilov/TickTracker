@@ -90,7 +90,7 @@ export function MapWireframe() {
       <Box x={0} y={0} w={800} h={36} fill="var(--surface)" radius={0} />
       <Box x={12} y={9} w={18} h={18} fill={ACCENT} />
       <Label x={38} y={22} bold>
-        TickTrack UK
+        TickTracker UK
       </Label>
       <Box x={520} y={9} w={48} h={18} />
       <Box x={574} y={9} w={48} h={18} />

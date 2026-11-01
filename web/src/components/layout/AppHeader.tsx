@@ -56,7 +56,7 @@ export function AppHeader() {
             <Icon name="tick" size={20} />
           </span>
           <span className="brand__text">
-            <span className="brand__name">TickTrack UK</span>
+            <span className="brand__name">TickTracker UK</span>
             <span className="brand__tag">Tick sighting tracker</span>
           </span>
         </NavLink>

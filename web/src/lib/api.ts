@@ -1,5 +1,5 @@
 /**
- * Client for the TickTrack API.
+ * Client for the TickTracker API.
  *
  * This used to call the Elanco service directly and derive coordinates,
  * severity and recency in the browser. All of that now happens server-side
@@ -111,7 +111,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (init.signal?.aborted) throw error;
     throw new ApiError(
       'network',
-      'Could not reach the TickTrack service. Check that the API is running and try again.',
+      'Could not reach the TickTracker service. Check that the API is running and try again.',
     );
   }
 

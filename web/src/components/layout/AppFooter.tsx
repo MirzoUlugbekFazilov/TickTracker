@@ -6,7 +6,7 @@ export function AppFooter() {
     <footer className="footer">
       <div className="container footer__inner">
         <div className="footer__col">
-          <p className="footer__heading">TickTrack UK</p>
+          <p className="footer__heading">TickTracker UK</p>
           <p>
             A prototype tick sighting tracker built for the Elanco placement
             programme technical task, by Mirzo-Ulugbek Fazilov.

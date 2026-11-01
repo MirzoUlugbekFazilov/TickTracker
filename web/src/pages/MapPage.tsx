@@ -156,7 +156,7 @@ export function MapPage() {
             here — one polite message rather than a screen reader walking a
             dozen placeholder blocks. */}
         <p className="sr-only" role="status">
-          Loading tick sightings from the TickTrack API.
+          Loading tick sightings from the TickTracker API.
         </p>
       </>
     );

@@ -40,7 +40,7 @@ export type ShareOutcome =
 
 export async function shareSighting(sighting: Sighting): Promise<ShareOutcome> {
   const url = shareUrl(sighting);
-  const title = `Tick sighting in ${sighting.location} — TickTrack UK`;
+  const title = `Tick sighting in ${sighting.location} — TickTracker UK`;
   const text = `${sighting.species} (${sighting.latinName}) recorded in ${sighting.location}.`;
 
   if (typeof navigator.share === 'function') {

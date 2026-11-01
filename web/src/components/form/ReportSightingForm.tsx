@@ -175,7 +175,7 @@ export function ReportSightingForm({ onSubmit }: ReportSightingFormProps) {
 
         <Alert tone="info" title="What happened to your report">
           <p>
-            It was sent to the TickTrack API, validated server-side, scored by the
+            It was sent to the TickTracker API, validated server-side, scored by the
             same severity model that rates the Elanco records, and written to
             PostgreSQL. It is now part of the dataset: it appears on the map, in
             the regional and seasonal aggregates, and in the filter counts.

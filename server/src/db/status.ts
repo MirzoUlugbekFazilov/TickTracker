@@ -47,7 +47,7 @@ function describeTarget(): string {
 }
 
 async function main(): Promise<void> {
-  console.log('\n  TickTrack database status');
+  console.log('\n  TickTracker database status');
   console.log('  ' + '-'.repeat(60));
   console.log(`  Target   : ${describeTarget()}`);
 

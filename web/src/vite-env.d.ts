@@ -8,7 +8,7 @@
  */
 interface ImportMetaEnv {
   /**
-   * Base URL of the TickTrack API.
+   * Base URL of the TickTracker API.
    *
    * Defaults to a relative `/api`, which works in development through the Vite
    * proxy and in production when the API is served from the same origin. Set

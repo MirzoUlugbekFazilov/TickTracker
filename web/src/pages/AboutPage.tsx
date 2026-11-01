@@ -40,7 +40,7 @@ export function AboutPage() {
         <span className="eyebrow">About</span>
         <h1 className="page__title">How this was built, and what it assumes</h1>
         <p className="section-intro">
-          TickTrack UK is a prototype built for the Elanco placement programme
+          TickTracker UK is a prototype built for the Elanco placement programme
           technical task by Mirzo-Ulugbek Fazilov. This page documents the data,
           the parts of it that are modelled rather than measured, and the design
           decisions behind the interface.

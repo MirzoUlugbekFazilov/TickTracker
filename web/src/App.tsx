@@ -54,7 +54,7 @@ function RouteAnnouncer() {
 
   useEffect(() => {
     const title = PAGE_TITLES[pathname] ?? 'Page not found';
-    document.title = `${title} — TickTrack UK`;
+    document.title = `${title} — TickTracker UK`;
 
     // Skip the first render: focusing the main region on initial load would
     // steal focus from a deep link's target and scroll the user away from it.

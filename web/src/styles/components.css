@@ -2592,6 +2592,40 @@
   margin-top: var(--space-2);
 }
 
+/* The hero feature: photograph, caption, headline figure, one frame.
+   The photograph is editorial rather than decorative — it shows the questing
+   posture the caption describes, which is the single most useful thing a
+   visitor can recognise in the field. */
+.dashboard__feature {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard__feature-image {
+  display: block;
+  width: 100%;
+  /* The source is 465x279. Constraining the height and cropping is better
+     than letting it scale up past its own resolution, where it goes soft. */
+  max-height: 200px;
+  object-fit: cover;
+  /* The subject sits slightly above centre in the frame. */
+  object-position: center 42%;
+  background: var(--plane);
+}
+
+.dashboard__feature-caption {
+  padding: var(--space-4) var(--space-5) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--ink-secondary);
+}
+
 /* The headline figure.
    A border-led block rather than a filled card: the brief asks for restraint,
    and at this size the number carries the emphasis on its own. A tinted panel
@@ -2600,7 +2634,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-inline-start: var(--space-6);
+  margin: var(--space-5);
+  padding-inline-start: var(--space-5);
   border-inline-start: 3px solid var(--brand);
 }
 
@@ -2641,15 +2676,6 @@
   .dashboard__head {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
-  }
-
-  .dashboard__headline {
-    /* Below the intro the vertical rule reads as a sidebar that is not there;
-       a horizontal rule above keeps the same separation honestly. */
-    border-inline-start: none;
-    border-top: 3px solid var(--brand);
-    padding-inline-start: 0;
-    padding-top: var(--space-4);
   }
 
   .dashboard__panels {

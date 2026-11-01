@@ -2,7 +2,7 @@
   "name": "ticktrack-uk",
   "version": "1.0.0",
   "private": true,
-  "description": "TickTrack UK — full-stack tick sighting tracker. Elanco placement programme technical task.",
+  "description": "TickTracker UK — full-stack tick sighting tracker. Elanco placement programme technical task.",
   "author": "Mirzo-Ulugbek Fazilov",
   "license": "MIT",
   "scripts": {

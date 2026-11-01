@@ -1,6 +1,6 @@
 # The database, explained
 
-A walkthrough of what is in the PostgreSQL database behind TickTrack UK, why
+A walkthrough of what is in the PostgreSQL database behind TickTracker UK, why
 each piece exists, and how to check any of it yourself.
 
 **Live instance:** Supabase project `eenidrepzktuspsmvbqd` (Elanco Project),

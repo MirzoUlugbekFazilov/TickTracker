@@ -19,6 +19,7 @@
  */
 
 import { Link } from 'react-router-dom';
+import tickOnGrass from '../assets/tick-on-grass.jpg';
 import { useSightings } from '../hooks/sightingsContext';
 import { useInsight } from '../hooks/useInsight';
 import { fetchSummary } from '../lib/api';
@@ -94,22 +95,42 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* The one number that frames everything else. */}
-        <div className="dashboard__headline">
-          <span className="dashboard__headline-label">Sightings recorded</span>
-          <AnimatedNumber
-            value={summary?.total ?? 0}
-            className="dashboard__headline-value"
+        {/* The subject, then the one number that frames everything else.
+            Photograph and figure share a frame because they answer the same
+            question together: what this is, and how much of it there is. */}
+        <figure className="dashboard__feature">
+          <img
+            className="dashboard__feature-image"
+            src={tickOnGrass}
+            /* Intrinsic size, so the browser reserves the box before the
+               image arrives and the headline below it does not jump. */
+            width={465}
+            height={279}
+            alt="A tick on the edge of a grass blade with its front legs raised, the questing posture it uses to catch onto a passing animal."
           />
-          <span className="dashboard__headline-meta">
-            {from && to ? `${from} to ${to}` : 'across the dataset'}
-            {meta?.lastIngest
-              ? ` · last ingest ${meta.lastIngest.status}, ${formatNumber(
-                  meta.lastIngest.rejected,
-                )} rejected`
-              : ''}
-          </span>
-        </div>
+
+          <figcaption className="dashboard__feature-caption">
+            Questing: a tick waits on the tip of the vegetation with its front
+            legs outstretched. It does not jump or fly &mdash; it holds on to
+            whatever brushes past.
+          </figcaption>
+
+          <div className="dashboard__headline">
+            <span className="dashboard__headline-label">Sightings recorded</span>
+            <AnimatedNumber
+              value={summary?.total ?? 0}
+              className="dashboard__headline-value"
+            />
+            <span className="dashboard__headline-meta">
+              {from && to ? `${from} to ${to}` : 'across the dataset'}
+              {meta?.lastIngest
+                ? ` · last ingest ${meta.lastIngest.status}, ${formatNumber(
+                    meta.lastIngest.rejected,
+                  )} rejected`
+                : ''}
+            </span>
+          </div>
+        </figure>
       </header>
 
       {/* ---------------------------------------------------------- stats */}

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "TickTrack UK API — ingests, processes and serves UK tick sighting data.",
+  "description": "TickTracker UK API — ingests, processes and serves UK tick sighting data.",
   "author": "Mirzo-Ulugbek Fazilov",
   "license": "MIT",
   "scripts": {
