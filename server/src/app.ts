@@ -6,24 +6,18 @@
  * testable with supertest, and what lets the ingest script import from the
  * same codebase without starting a server.
  *
- * NAMED createApp.ts, NOT app.ts, DELIBERATELY. Vercel resolves a backend
- * entry point by searching `app.*`, `index.*`, `server.*`, `src/app.*`,
- * `src/index.*`, `src/server.*` in that order, and requires the match to have
- * a default export that is a function or a server. As `src/app.ts` this file
- * won the search, exported only the `createApp` factory, and every request
- * failed with "Invalid export found in module ... The default export must be a
- * function or server." Renaming it lets `src/index.ts` win, which exports the
- * constructed app as required.
+ * VERCEL ENTRY POINT. Vercel resolves a backend entry by searching `app.*`,
+ * `index.*`, `server.*`, `src/app.*`, `src/index.*`, `src/server.*` in that
+ * order, and the winner must both import `express` and default-export the
+ * application. This file wins that search, so it does both: the factory stays
+ * exported for tests, and the constructed app is the default export.
  *
- * Middleware order matters and is deliberate:
- *   1. CORS            — must run before anything that can reject a request,
- *                        or the browser sees a CORS error instead of the real
- *                        status and the actual problem is invisible.
- *   2. body parsing    — with an explicit size limit.
- *   3. request logging — after parsing so it can report the outcome.
- *   4. routes
- *   5. 404             — only reached when nothing matched.
- *   6. error handler   — last; Express identifies it by its four arguments.
+ * Getting either half wrong fails at runtime, not build time, and the two
+ * failures look nothing alike:
+ *   - no default export -> "Invalid export found in module ... The default
+ *     export must be a function or server" on every request
+ *   - entry does not import express -> "No entrypoint found which imports
+ *     express" at build
  */
 
 import express from 'express';
@@ -108,3 +102,13 @@ export function createApp() {
 
   return app;
 }
+
+/**
+ * The application instance.
+ *
+ * Built at module load so this file satisfies Vercel's default-export
+ * requirement. `index.ts` imports it rather than calling the factory again —
+ * one app per process, whether that process is a local server or a Function.
+ */
+const app = createApp();
+export default app;

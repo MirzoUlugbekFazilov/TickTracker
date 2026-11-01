@@ -14,21 +14,11 @@
  *   4. Kick off the first ingest in the background if the dataset is empty.
  */
 
-import { createApp } from './createApp.js';
+import app from './app.js';
 import { config } from './config.js';
 import { checkConnection, closePool } from './db/pool.js';
 import { migrate } from './db/migrate.js';
 import { isDatasetEmpty, runIngest } from './ingest/ingestService.js';
-
-/**
- * The Express app, exported for Vercel.
- *
- * Deployed to Vercel the whole app becomes one Function on Fluid Compute, and
- * Vercel imports this module and uses the default export. The long-running
- * server behaviour below is therefore skipped there — see `main()`.
- */
-const app = createApp();
-export default app;
 
 /**
  * Local / self-hosted startup.
