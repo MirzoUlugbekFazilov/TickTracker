@@ -57,8 +57,10 @@ export function AboutPage() {
           <a href={API_BASE_URL} target="_blank" rel="noopener noreferrer">
             {API_BASE_URL}
           </a>
-          , on load, fetching the full dataset. Everything is then filtered
-          client-side.
+          . The Elanco dataset is ingested into PostgreSQL by that API, which
+          enriches it with coordinates and a derived risk rating. Filtering and
+          every aggregate below run as SQL on the server &mdash; this page only
+          renders what it is sent.
         </p>
 
         {state === 'ready' ? (

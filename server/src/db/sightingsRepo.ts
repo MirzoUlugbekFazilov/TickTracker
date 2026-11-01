@@ -670,13 +670,7 @@ export async function createSighting(input: NewSightingInput): Promise<Sighting>
 
   // A new report can extend the dataset's date range, which moves the recency
   // window, so the stored bounds are refreshed.
-  await query(
-    `UPDATE dataset_meta
-        SET earliest_observed = (SELECT min(observed_at) FROM sightings),
-            latest_observed   = (SELECT max(observed_at) FROM sightings),
-            updated_at        = now()
-      WHERE id = 1`,
-  );
+  await refreshDatasetBounds();
 
   const created = await findSightingById(id);
   if (!created) throw AppError.internal(new Error('Report saved but could not be read back.'));
@@ -687,7 +681,29 @@ export async function deleteSighting(id: string): Promise<boolean> {
   // Scoped to user reports: upstream records are owned by the ingest pipeline
   // and deleting one would simply be re-created on the next run.
   const result = await query(`DELETE FROM sightings WHERE id = $1 AND source = 'user'`, [id]);
-  return (result.rowCount ?? 0) > 0;
+  const deleted = (result.rowCount ?? 0) > 0;
+
+  // Refresh the stored date bounds, exactly as createSighting does.
+  //
+  // Without this, deleting the newest sighting leaves `latest_observed`
+  // pointing at a row that no longer exists — and because the recency window
+  // is measured back from that value, the whole "most recent 90 days" filter
+  // silently shifts to a period containing nothing. The symptom is subtle:
+  // the UI reports a date range the data does not actually cover.
+  if (deleted) await refreshDatasetBounds();
+
+  return deleted;
+}
+
+/** Recomputes the dataset's observed-date bounds from the rows themselves. */
+export async function refreshDatasetBounds(): Promise<void> {
+  await query(
+    `UPDATE dataset_meta
+        SET earliest_observed = (SELECT min(observed_at) FROM sightings),
+            latest_observed   = (SELECT max(observed_at) FROM sightings),
+            updated_at        = now()
+      WHERE id = 1`,
+  );
 }
 
 export async function getLastIngestRun() {
