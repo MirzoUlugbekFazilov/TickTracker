@@ -1,10 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!--
+  TickTrack UK favicon.
+
+  A map pin, not a tick.
+
+  The previous mark was a drawn tick: amber body, scutum, eight legs. It works
+  at 72px in the species guide and fails completely at 16px, where the legs
+  collapse into noise and the silhouette reads as a generic beetle — close
+  enough to a warning or error glyph that it was mistaken for one in the Vercel
+  project list.
+
+  A pin survives the size. The silhouette is unambiguous at 16px, it says
+  "map" immediately, and the amber centre ties it to the severity markers the
+  map actually draws. Detail is deliberately minimal: one shape, one dot, no
+  strokes thinner than 2px at the 64px viewBox, so nothing disappears when the
+  browser downsamples it to a tab icon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TickTrack UK">
   <rect width="64" height="64" rx="14" fill="#11487f"/>
-  <g stroke="#ffffff" stroke-width="3.4" stroke-linecap="round" fill="none">
-    <path d="M23 29 12 23M22 35H10M23 41l-10 6"/>
-    <path d="M41 29l11-6M42 35h12M41 41l10 6"/>
-    <path d="M32 21v-7"/>
+  <!--
+    Scaled about the tile centre so the pin occupies ~60% of the width rather
+    than ~48%. At 16px the extra mass is the difference between a recognisable
+    pin and a smudge; the uniform scale keeps the proportions exact.
+  -->
+  <g transform="translate(32 32) scale(1.22) translate(-32 -32)">
+    <path
+      d="M32 13c-8.5 0-15.4 6.9-15.4 15.4 0 10.9 13.4 22 14.9 23.2a.8.8 0 0 0 1 0c1.5-1.2 14.9-12.3 14.9-23.2C47.4 19.9 40.5 13 32 13Z"
+      fill="#ffffff"/>
+    <circle cx="32" cy="28.2" r="6.4" fill="#f59e0b"/>
   </g>
-  <ellipse cx="32" cy="38" rx="12" ry="14.5" fill="#f59e0b" stroke="#ffffff" stroke-width="2.6"/>
-  <path d="M32 22.5c-4.6 0-7.8 3.1-7.8 7 0 3.4 3.2 5.8 7.8 5.8s7.8-2.4 7.8-5.8c0-3.9-3.2-7-7.8-7Z" fill="#11487f" stroke="#ffffff" stroke-width="2.2"/>
 </svg>
