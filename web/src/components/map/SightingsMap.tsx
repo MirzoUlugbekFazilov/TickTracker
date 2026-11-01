@@ -200,13 +200,31 @@ function ResizeHandler({ containerRef }: { containerRef: React.RefObject<HTMLDiv
     const element = containerRef.current;
     if (!element) return;
 
+    // The pending frame has to be cancellable. Unmounting the map collapses
+    // its container, which fires the observer one last time; without this the
+    // callback ran a frame later against a map Leaflet had already torn down
+    // and threw on a missing pane ("_leaflet_pos" of undefined). Visible when
+    // navigating away from /map and back.
+    let frame = 0;
+
     const observer = new ResizeObserver(() => {
       // A frame's delay lets the browser finish layout first; calling
       // invalidateSize synchronously inside the observer reads the old box.
-      requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        // `getContainer` throws once the map is removed, and a removed map has
+        // no pane to measure — either way there is nothing left to invalidate.
+        if (!map.getPane('mapPane')) return;
+        map.invalidateSize({ animate: false });
+      });
     });
+
     observer.observe(element);
-    return () => observer.disconnect();
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [map, containerRef]);
 
   return null;
