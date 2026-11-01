@@ -61,19 +61,49 @@ function sslConfig(): false | { rejectUnauthorized: boolean } {
   return LOCAL_HOSTS.has(hostname) ? false : { rejectUnauthorized: false };
 }
 
+/**
+ * Pool size, which has to differ between a long-running server and a Function.
+ *
+ * A single long-running process owns exactly one pool, so 10 connections is a
+ * sensible ceiling for a read-heavy API.
+ *
+ * Serverless breaks that assumption completely. Vercel's Fluid Compute runs
+ * SEVERAL instances concurrently, each importing this module and each building
+ * its own pool — so the real connection count is `max x instances`, not `max`.
+ * With `max: 10` against Supabase's session pooler (15 clients on the free
+ * tier) two warm instances are enough to exhaust the database, and every
+ * request that needs more than one connection starts failing:
+ *
+ *   (EMAXCONNSESSION) max clients reached in session mode
+ *                     - max clients are limited to pool_size: 15
+ *
+ * It surfaced first on `/api/sightings`, which issues five queries in parallel
+ * (rows, count, and one per facet dimension), while `/api/health` kept
+ * returning 200 because a single `SELECT 1` can nearly always get a slot. A
+ * green health check beside a failing endpoint is the signature of connection
+ * exhaustion rather than an outage.
+ *
+ * Two connections per instance leaves headroom for several instances. Requests
+ * needing more are queued by pg-pool rather than refused — slightly slower
+ * under burst, which is the right trade against failing outright.
+ */
+function poolMax(): number {
+  const override = Number(process.env.DATABASE_POOL_MAX);
+  if (Number.isFinite(override) && override > 0) return override;
+  return process.env.VERCEL ? 2 : 10;
+}
+
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
   ssl: sslConfig(),
-  // Modest ceiling: this API is read-heavy with short queries, and a large
-  // pool mostly buys contention inside Postgres rather than throughput.
-  // It also matters against a hosted database — Supabase's free tier allows
-  // far fewer direct connections than a local cluster, and exhausting them
-  // takes down every other client of the project too.
-  max: 10,
-  idleTimeoutMillis: 30_000,
-  // Fail fast rather than hanging a request for 30 seconds if the database
-  // is unreachable. A little more generous than a LAN default because a
-  // hosted database is a network hop away.
+  max: poolMax(),
+  // Short on serverless: an idle instance should hand its connections back
+  // quickly so other instances can use them, rather than hoarding them for
+  // the 30 seconds a long-running server can afford.
+  idleTimeoutMillis: process.env.VERCEL ? 10_000 : 30_000,
+  // Fail fast rather than hanging a request if the database is unreachable.
+  // A little more generous than a LAN default because a hosted database is a
+  // network hop away, and this also covers time spent queued for a slot.
   connectionTimeoutMillis: 10_000,
 });
 

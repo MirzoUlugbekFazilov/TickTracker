@@ -376,10 +376,16 @@ createdb ticktrack
 ```
 
 Or a hosted one. I used Supabase — **Dashboard → Connect → Connection string →
-URI**, taking the **session pooler** (port 5432). The direct
-`db.<ref>.supabase.co` host is IPv6-only on the free tier and will not resolve
-on most networks, and the transaction pooler (6543) does not fully support the
-extended query protocol `pg` uses for parameterised queries.
+URI**. The direct `db.<ref>.supabase.co` host is IPv6-only on the free tier and
+will not resolve on most networks, so use a pooler:
+
+| Running where | Port | Why |
+|---|---|---|
+| Local / long-running server | **5432** session | One process, one pool |
+| Vercel (the deployed API) | **6543** transaction | Several Function instances each hold their own pool. Session mode caps at 15 clients on the free tier, and two warm instances exhaust it |
+
+Supavisor handles the extended query protocol `pg` uses in both modes, so the
+same code runs against either — only the port changes.
 
 ### 2. API
 
@@ -549,6 +555,12 @@ fresh build rather than a redeploy of the existing output.
 ## Limitations and future improvements
 
 - **No automated tests.** Described above. The most significant gap.
+- **Database connections are the real scaling limit**, not compute. Each
+  Function instance holds its own pool, so the ceiling is
+  `pool size x instances`. It is set to 2 per instance on Vercel against the
+  transaction pooler; on Supabase's free tier that is comfortable, but a
+  production deployment should move to a dedicated pooler and size this
+  deliberately rather than inheriting a default.
 - **No authentication.** Anyone can post or delete a report. Real crowdsourcing
   needs accounts, rate limiting and moderation.
 - **Images are base64 in a `TEXT` column.** Acceptable for downscaled ~100 KB
